@@ -25,7 +25,7 @@ class AcmeCsvRowParser implements CsvRowParser {
                 new InventoryItem(ean, mfn, netPrice, currency, qty,
                         1, AcmeSupplierDescriptor.SUPPLIER.name(), true),
                 new Taxonomy(ean, mfn, brand, name, productCategory,
-                        AcmeSupplierDescriptor.SUPPLIER.accuracyScore(), null)
+                        AcmeSupplierDescriptor.SUPPLIER.accuracyScore())
         );
     }
 }
