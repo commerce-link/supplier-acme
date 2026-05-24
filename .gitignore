@@ -25,3 +25,4 @@
 /nbdist/
 /.nb-gradle/
 /.serena/
+/target_test-classes/
