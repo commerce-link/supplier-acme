@@ -5,8 +5,8 @@ import pl.commercelink.inventory.supplier.api.FeedFormat;
 import pl.commercelink.inventory.supplier.api.ShippingCostPolicy;
 import pl.commercelink.inventory.supplier.api.ShippingPolicy;
 import pl.commercelink.inventory.supplier.api.ShippingTerms;
-import pl.commercelink.inventory.supplier.api.Supplier;
-import pl.commercelink.inventory.supplier.api.SupplierDescriptor;
+import pl.commercelink.inventory.supplier.api.SupplierProvider;
+import pl.commercelink.inventory.supplier.api.SupplierProviderDescriptor;
 import pl.commercelink.inventory.supplier.api.SupplierInfo;
 import pl.commercelink.inventory.supplier.api.SupplierType;
 import pl.commercelink.inventory.supplier.api.support.ResourceDownloadException;
@@ -15,14 +15,14 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 
-public class AcmeSupplierDescriptor implements SupplierDescriptor {
+public class AcmeSupplierDescriptor implements SupplierProviderDescriptor {
 
     public static final SupplierInfo SUPPLIER = new SupplierInfo("Acme", SupplierType.Distributor, 5, "PL",
             new ShippingPolicy(new ShippingTerms(1, new ShippingCostPolicy.Free())),
             null);
 
     @Override
-    public Supplier create(Map<String, String> configuration) {
+    public SupplierProvider create(Map<String, String> configuration) {
         return () -> {
             try {
                 byte[] bytes = getClass().getClassLoader()
