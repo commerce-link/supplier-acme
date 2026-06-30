@@ -37,7 +37,7 @@ public class AcmeSupplierDescriptor implements SupplierProviderDescriptor {
 
     @Override
     public FeedFormat feedFormat() {
-        return new FeedFormat.Csv(new AcmeCsvRowParser(), ';');
+        return new FeedFormat.Csv(new AcmeCsvRowParser(SUPPLIER), ';');
     }
 
     @Override

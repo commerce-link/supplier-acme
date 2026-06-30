@@ -3,10 +3,17 @@ package pl.commercelink.inventory.supplier.acme;
 import pl.commercelink.inventory.supplier.api.CsvRowParser;
 import pl.commercelink.inventory.supplier.api.InventoryItem;
 import pl.commercelink.inventory.supplier.api.ParsedRow;
+import pl.commercelink.inventory.supplier.api.SupplierInfo;
 import pl.commercelink.inventory.supplier.api.Taxonomy;
 import pl.commercelink.taxonomy.ProductCategory;
 
 class AcmeCsvRowParser implements CsvRowParser {
+
+    private final SupplierInfo supplier;
+
+    AcmeCsvRowParser(SupplierInfo supplier) {
+        this.supplier = supplier;
+    }
 
     @Override
     public ParsedRow parse(String[] row) {
@@ -23,9 +30,9 @@ class AcmeCsvRowParser implements CsvRowParser {
 
         return new ParsedRow(
                 new InventoryItem(ean, mfn, netPrice, currency, qty,
-                        1, AcmeSupplierDescriptor.SUPPLIER.name(), true),
+                        1, supplier.name(), true),
                 new Taxonomy(ean, mfn, brand, name, productCategory,
-                        AcmeSupplierDescriptor.SUPPLIER.accuracyScore())
+                        supplier.accuracyScore())
         );
     }
 }
