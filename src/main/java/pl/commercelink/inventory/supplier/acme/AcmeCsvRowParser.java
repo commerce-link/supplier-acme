@@ -5,7 +5,6 @@ import pl.commercelink.inventory.supplier.api.InventoryItem;
 import pl.commercelink.inventory.supplier.api.ParsedRow;
 import pl.commercelink.inventory.supplier.api.SupplierInfo;
 import pl.commercelink.inventory.supplier.api.Taxonomy;
-import pl.commercelink.taxonomy.ProductCategory;
 
 class AcmeCsvRowParser implements CsvRowParser {
 
@@ -26,13 +25,13 @@ class AcmeCsvRowParser implements CsvRowParser {
         String currency = row[6];
         int qty = Integer.parseInt(row[7]);
 
-        ProductCategory productCategory = AcmeCategoryMapper.from(category);
+        String productCategory = AcmeCategoryMapper.from(category);
 
         return new ParsedRow(
                 new InventoryItem(ean, mfn, netPrice, currency, qty,
                         1, supplier.name(), true),
                 new Taxonomy(ean, mfn, brand, name, productCategory,
-                        supplier.accuracyScore())
+                        supplier.accuracyScore(), null, null)
         );
     }
 }
