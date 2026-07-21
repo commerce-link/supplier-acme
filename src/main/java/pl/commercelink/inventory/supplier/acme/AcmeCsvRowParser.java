@@ -20,17 +20,14 @@ class AcmeCsvRowParser implements CsvRowParser {
         String mfn = row[1];
         String brand = row[2];
         String name = row[3];
-        String category = row[4];
         double netPrice = Double.parseDouble(row[5]);
         String currency = row[6];
         int qty = Integer.parseInt(row[7]);
 
-        String productCategory = AcmeCategoryMapper.from(category);
-
         return new ParsedRow(
                 new InventoryItem(ean, mfn, netPrice, currency, qty,
                         1, supplier.name(), true),
-                new Taxonomy(ean, mfn, brand, name, productCategory,
+                new Taxonomy(ean, mfn, brand, name, Taxonomy.OTHER,
                         supplier.accuracyScore(), null, null)
         );
     }
