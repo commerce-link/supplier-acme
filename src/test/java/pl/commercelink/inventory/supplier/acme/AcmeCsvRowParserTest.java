@@ -36,7 +36,7 @@ class AcmeCsvRowParserTest {
         assertEquals(5, result.taxonomy().dataAccuracyScore());
         assertNull(result.taxonomy().netWeightInGrams());
         assertNull(result.taxonomy().grossWeightInGrams());
-        assertEquals("Other", result.taxonomy().category());
+        assertNull(result.taxonomy().category());
         assertFalse(result.taxonomy().isProcessable());
     }
 
@@ -53,8 +53,24 @@ class AcmeCsvRowParserTest {
             ParsedRow result = parser.parse(row);
 
             // then
-            assertEquals("Other", result.taxonomy().category());
+            assertNull(result.taxonomy().category());
             assertFalse(result.taxonomy().isProcessable());
         }
+    }
+
+    @Test
+    void parsePassesRawFeedCategoryAndLeavesCategoryNull() {
+        // given
+        String[] row = {
+                "1234567890123", "MFN-1", "TestBrand", "Test Product",
+                "Karty graficzne", "100.50", "PLN", "5"
+        };
+
+        // when
+        ParsedRow result = parser.parse(row);
+
+        // then
+        assertNull(result.taxonomy().category());
+        assertEquals("Karty graficzne", result.taxonomy().rawCategory());
     }
 }
