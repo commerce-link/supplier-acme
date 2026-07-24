@@ -4,7 +4,7 @@ import pl.commercelink.inventory.supplier.api.CsvRowParser;
 import pl.commercelink.inventory.supplier.api.InventoryItem;
 import pl.commercelink.inventory.supplier.api.ParsedRow;
 import pl.commercelink.inventory.supplier.api.SupplierInfo;
-import pl.commercelink.inventory.supplier.api.Taxonomy;
+import pl.commercelink.inventory.supplier.api.SupplierProduct;
 
 class AcmeCsvRowParser implements CsvRowParser {
 
@@ -28,7 +28,7 @@ class AcmeCsvRowParser implements CsvRowParser {
         return new ParsedRow(
                 new InventoryItem(ean, mfn, netPrice, currency, qty,
                         1, supplier.name(), true),
-                new Taxonomy(ean, mfn, brand, name, null,
+                new SupplierProduct(ean, mfn, brand, name,
                         supplier.accuracyScore(), null, null, rawCategory)
         );
     }

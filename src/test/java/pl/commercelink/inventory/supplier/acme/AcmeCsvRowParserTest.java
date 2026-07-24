@@ -6,7 +6,6 @@ import pl.commercelink.inventory.supplier.api.ParsedRow;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class AcmeCsvRowParserTest {
@@ -14,7 +13,7 @@ class AcmeCsvRowParserTest {
     private final AcmeCsvRowParser parser = new AcmeCsvRowParser(AcmeSupplierDescriptor.SUPPLIER);
 
     @Test
-    void parsesRowIntoItemAndUncategorizedTaxonomy() {
+    void parsesRowIntoItemAndProduct() {
         // given
         String[] row = {
                 "1234567890123", "MFN-1", "TestBrand", "Test Product",
@@ -31,17 +30,16 @@ class AcmeCsvRowParserTest {
         assertEquals("PLN", result.item().currency());
         assertEquals(5, result.item().qty());
         assertEquals("Acme", result.item().supplier());
-        assertEquals("TestBrand", result.taxonomy().brand());
-        assertEquals("Test Product", result.taxonomy().name());
-        assertEquals(5, result.taxonomy().dataAccuracyScore());
-        assertNull(result.taxonomy().netWeightInGrams());
-        assertNull(result.taxonomy().grossWeightInGrams());
-        assertNull(result.taxonomy().category());
-        assertFalse(result.taxonomy().isProcessable());
+        assertEquals("TestBrand", result.product().brand());
+        assertEquals("Test Product", result.product().name());
+        assertEquals(5, result.product().dataAccuracyScore());
+        assertNull(result.product().netWeightInGrams());
+        assertNull(result.product().grossWeightInGrams());
+        assertEquals("CPU", result.product().rawCategory());
     }
 
     @Test
-    void ignoresFeedCategoryColumnEvenWhenItMatchesKnownCategory() {
+    void passesFeedCategoryColumnThroughAsRawCategory() {
         for (String feedCategory : List.of("CPU", "GPU", "Laptops", "Frobnicator")) {
             // given
             String[] row = {
@@ -53,13 +51,12 @@ class AcmeCsvRowParserTest {
             ParsedRow result = parser.parse(row);
 
             // then
-            assertNull(result.taxonomy().category());
-            assertFalse(result.taxonomy().isProcessable());
+            assertEquals(feedCategory, result.product().rawCategory());
         }
     }
 
     @Test
-    void parsePassesRawFeedCategoryAndLeavesCategoryNull() {
+    void parsePassesRawFeedCategory() {
         // given
         String[] row = {
                 "1234567890123", "MFN-1", "TestBrand", "Test Product",
@@ -70,7 +67,6 @@ class AcmeCsvRowParserTest {
         ParsedRow result = parser.parse(row);
 
         // then
-        assertNull(result.taxonomy().category());
-        assertEquals("Karty graficzne", result.taxonomy().rawCategory());
+        assertEquals("Karty graficzne", result.product().rawCategory());
     }
 }
