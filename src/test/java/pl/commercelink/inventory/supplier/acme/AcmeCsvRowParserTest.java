@@ -6,68 +6,67 @@ import pl.commercelink.inventory.supplier.api.ParsedRow;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AcmeCsvRowParserTest {
-
-    private static final List<String> KNOWN_CATEGORIES = List.of(
-            "CPU", "GPU", "Memory", "Motherboard", "PSU", "Storage", "Cooler", "Case",
-            "Fan", "Displays", "Keyboards", "Mice", "MousePads", "Headphones",
-            "Microphones", "Webcams", "Speakers", "Laptops");
 
     private final AcmeCsvRowParser parser = new AcmeCsvRowParser(AcmeSupplierDescriptor.SUPPLIER);
 
     @Test
-    void parsesRowIntoItemAndTaxonomy() {
+    void parsesRowIntoItemAndProduct() {
+        // given
         String[] row = {
                 "1234567890123", "MFN-1", "TestBrand", "Test Product",
                 "CPU", "100.50", "PLN", "5"
         };
 
+        // when
         ParsedRow result = parser.parse(row);
 
+        // then
         assertEquals("1234567890123", result.item().ean());
         assertEquals("MFN-1", result.item().mfn());
         assertEquals(100.50, result.item().netPrice());
         assertEquals("PLN", result.item().currency());
         assertEquals(5, result.item().qty());
         assertEquals("Acme", result.item().supplier());
-        assertEquals("TestBrand", result.taxonomy().brand());
-        assertEquals("Test Product", result.taxonomy().name());
-        assertEquals("CPU", result.taxonomy().category());
-        assertEquals(5, result.taxonomy().dataAccuracyScore());
-        assertNull(result.taxonomy().netWeightInGrams());
-        assertNull(result.taxonomy().grossWeightInGrams());
-        assertTrue(result.taxonomy().isProcessable());
+        assertEquals("TestBrand", result.product().brand());
+        assertEquals("Test Product", result.product().name());
+        assertEquals(5, result.product().dataAccuracyScore());
+        assertNull(result.product().netWeightInGrams());
+        assertNull(result.product().grossWeightInGrams());
+        assertEquals("CPU", result.product().rawCategory());
     }
 
     @Test
-    void mapsEveryKnownFeedCategoryToItself() {
-        for (String category : KNOWN_CATEGORIES) {
+    void passesFeedCategoryColumnThroughAsRawCategory() {
+        for (String feedCategory : List.of("CPU", "GPU", "Laptops", "Frobnicator")) {
+            // given
             String[] row = {
                     "1234567890123", "MFN-1", "TestBrand", "Test Product",
-                    category, "100.50", "PLN", "5"
+                    feedCategory, "100.50", "PLN", "5"
             };
 
+            // when
             ParsedRow result = parser.parse(row);
 
-            assertEquals(category, result.taxonomy().category());
-            assertTrue(result.taxonomy().isProcessable());
+            // then
+            assertEquals(feedCategory, result.product().rawCategory());
         }
     }
 
     @Test
-    void mapsUnknownFeedCategoryToOtherWhichIsNotProcessable() {
+    void parsePassesRawFeedCategory() {
+        // given
         String[] row = {
                 "1234567890123", "MFN-1", "TestBrand", "Test Product",
-                "Frobnicator", "100.50", "PLN", "5"
+                "Karty graficzne", "100.50", "PLN", "5"
         };
 
+        // when
         ParsedRow result = parser.parse(row);
 
-        assertEquals("Other", result.taxonomy().category());
-        assertFalse(result.taxonomy().isProcessable());
+        // then
+        assertEquals("Karty graficzne", result.product().rawCategory());
     }
 }
