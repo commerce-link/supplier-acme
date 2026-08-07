@@ -128,4 +128,22 @@ class AcmeSupplierProviderTest {
         assertEquals(first.externalOrderId(), second.externalOrderId());
         assertEquals(first.totalNet(), second.totalNet());
     }
+
+    @Test
+    void retryWithSameRefSucceedsAfterFailedPlaceOrder() {
+        // given
+        String ref = UUID.randomUUID().toString();
+        AcmeSupplierProvider blocked = new AcmeSupplierProvider(
+                Map.of("orderingUnavailableEans", "5900000000001"));
+        SupplierPurchaseRequest request = new SupplierPurchaseRequest(
+                ref, List.of(new SupplierOrderLine("5900000000001", "MFN-CLEAR-01", 1)));
+        assertThrows(SupplierOrderException.class, () -> blocked.placeOrder(request));
+
+        // when
+        AcmeSupplierProvider restocked = new AcmeSupplierProvider(Map.of());
+        SupplierOrderResult result = restocked.placeOrder(request);
+
+        // then
+        assertEquals("ACME-PO-" + ref, result.externalOrderId());
+    }
 }
