@@ -28,14 +28,19 @@ class AcmeSupplierProvider implements SupplierProvider {
     private final double priceDriftFactor;
 
     AcmeSupplierProvider(Map<String, String> configuration) {
-        String rawEans = configuration.getOrDefault("orderingUnavailableEans", "");
+        String rawEans = trimmedOrDefault(configuration, "orderingUnavailableEans", "");
         this.unavailableEans = Arrays.stream(rawEans.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toSet());
         double driftPercent = Double.parseDouble(
-                configuration.getOrDefault("orderingPriceDriftPercent", "0"));
+                trimmedOrDefault(configuration, "orderingPriceDriftPercent", "0"));
         this.priceDriftFactor = 1 + driftPercent / 100;
+    }
+
+    private static String trimmedOrDefault(Map<String, String> configuration, String key, String defaultValue) {
+        String value = configuration.get(key);
+        return value == null || value.isBlank() ? defaultValue : value;
     }
 
     @Override

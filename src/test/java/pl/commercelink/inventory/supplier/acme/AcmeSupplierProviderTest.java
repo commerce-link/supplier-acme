@@ -57,6 +57,21 @@ class AcmeSupplierProviderTest {
     }
 
     @Test
+    void blankConfigurationValuesAreTreatedAsDefaults() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(
+                Map.of("orderingPriceDriftPercent", " ", "orderingUnavailableEans", " "));
+
+        // when
+        List<SupplierQuote> quotes = provider.checkAvailability(
+                List.of(new SupplierOrderLine("5900000000001", "MFN-CLEAR-01", 5)));
+
+        // then
+        assertEquals(20, quotes.get(0).availableQuantity());
+        assertEquals(1299.00, quotes.get(0).netPrice());
+    }
+
+    @Test
     void appliesConfiguredPriceDrift() {
         // given
         AcmeSupplierProvider provider = new AcmeSupplierProvider(
