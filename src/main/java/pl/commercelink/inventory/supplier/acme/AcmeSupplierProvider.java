@@ -67,7 +67,11 @@ class AcmeSupplierProvider implements SupplierProvider {
 
     @Override
     public SupplierOrderResult placeOrder(SupplierPurchaseRequest request) {
-        return PLACED_ORDERS.computeIfAbsent(request.clientOrderRef(), ref -> {
+        String clientOrderRef = request.clientOrderRef();
+        if (clientOrderRef == null || clientOrderRef.isBlank()) {
+            throw new SupplierOrderException("Missing clientOrderRef, refusing to place a non-idempotent ACME order");
+        }
+        return PLACED_ORDERS.computeIfAbsent(clientOrderRef, ref -> {
             List<SupplierQuote> quotes = checkAvailability(request.lines());
             Map<String, SupplierQuote> quotesByEan = quotes.stream()
                     .collect(Collectors.toMap(SupplierQuote::ean, Function.identity()));
