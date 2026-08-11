@@ -6,6 +6,8 @@ import pl.commercelink.inventory.supplier.api.ParsedRow;
 import pl.commercelink.inventory.supplier.api.SupplierInfo;
 import pl.commercelink.inventory.supplier.api.SupplierProduct;
 
+import static pl.commercelink.taxonomy.UnifiedProductIdentifiers.unifyEan;
+
 class AcmeCsvRowParser implements CsvRowParser {
 
     private final SupplierInfo supplier;
@@ -27,7 +29,7 @@ class AcmeCsvRowParser implements CsvRowParser {
 
         return new ParsedRow(
                 new InventoryItem(ean, mfn, netPrice, currency, qty,
-                        1, supplier.name(), true),
+                        1, supplier.name(), true).withSku("ACME-" + unifyEan(ean)),
                 new SupplierProduct(ean, mfn, brand, name,
                         supplier.accuracyScore(), null, null, rawCategory)
         );

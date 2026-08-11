@@ -19,6 +19,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import static pl.commercelink.taxonomy.UnifiedProductIdentifiers.unifyEan;
 
 class AcmeSupplierProvider implements SupplierProvider {
 
@@ -59,9 +62,9 @@ class AcmeSupplierProvider implements SupplierProvider {
 
     @Override
     public List<SupplierQuote> checkAvailability(List<SupplierOrderLine> lines) {
-        Map<String, String[]> feedByEan = feedRowsByEan();
+        Map<String, String[]> feedBySku = feedRowsBySku();
         return lines.stream()
-                .map(line -> toQuote(line, feedByEan.get(line.ean())))
+                .map(line -> toQuote(line, line.sku() == null ? null : feedBySku.get(line.sku())))
                 .collect(Collectors.toList());
     }
 
@@ -72,11 +75,15 @@ class AcmeSupplierProvider implements SupplierProvider {
             throw new SupplierOrderException("Missing clientOrderRef, refusing to place a non-idempotent ACME order");
         }
         return PLACED_ORDERS.computeIfAbsent(clientOrderRef, ref -> {
-            List<SupplierQuote> quotes = checkAvailability(request.lines());
-            Map<String, SupplierQuote> quotesByEan = quotes.stream()
-                    .collect(Collectors.toMap(SupplierQuote::ean, Function.identity()));
             for (SupplierOrderLine line : request.lines()) {
-                SupplierQuote quote = quotesByEan.get(line.ean());
+                if (line.sku() == null) {
+                    throw new SupplierOrderException("No ACME product code for EAN " + line.ean());
+                }
+            }
+            List<SupplierQuote> quotes = checkAvailability(request.lines());
+            for (int i = 0; i < request.lines().size(); i++) {
+                SupplierOrderLine line = request.lines().get(i);
+                SupplierQuote quote = quotes.get(i);
                 if (quote.availableQuantity() < line.quantity()) {
                     throw new SupplierOrderException(
                             "Insufficient availability for EAN " + line.ean()
@@ -84,8 +91,8 @@ class AcmeSupplierProvider implements SupplierProvider {
                                     + ", available " + quote.availableQuantity());
                 }
             }
-            double totalNet = request.lines().stream()
-                    .mapToDouble(line -> line.quantity() * quotesByEan.get(line.ean()).netPrice())
+            double totalNet = IntStream.range(0, request.lines().size())
+                    .mapToDouble(i -> request.lines().get(i).quantity() * quotes.get(i).netPrice())
                     .sum();
             return new SupplierOrderResult("ACME-PO-" + ref, totalNet, "PLN", quotes);
         });
@@ -100,12 +107,12 @@ class AcmeSupplierProvider implements SupplierProvider {
                 Integer.parseInt(feedRow[7]), livePrice, feedRow[6]);
     }
 
-    private Map<String, String[]> feedRowsByEan() {
+    private Map<String, String[]> feedRowsBySku() {
         String feed = new String(feedBytes(), StandardCharsets.UTF_8);
         return feed.lines()
                 .filter(row -> !row.isBlank())
                 .map(row -> row.split(";"))
-                .collect(Collectors.toMap(row -> row[0], Function.identity()));
+                .collect(Collectors.toMap(row -> "ACME-" + unifyEan(row[0]), Function.identity()));
     }
 
     private byte[] feedBytes() {

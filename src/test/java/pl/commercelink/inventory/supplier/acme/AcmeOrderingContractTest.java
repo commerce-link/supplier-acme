@@ -24,7 +24,7 @@ class AcmeOrderingContractTest extends SupplierOrderingContractTest {
 
     @Override
     protected List<SupplierOrderLine> sampleLines() {
-        return List.of(new SupplierOrderLine(SAMPLE_EAN, "MFN-CLEAR-01", 1));
+        return List.of(new SupplierOrderLine("ACME-" + SAMPLE_EAN, SAMPLE_EAN, "MFN-CLEAR-01", 1));
     }
 
     @Override

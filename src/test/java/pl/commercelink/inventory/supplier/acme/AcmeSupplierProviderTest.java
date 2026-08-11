@@ -33,7 +33,7 @@ class AcmeSupplierProviderTest {
 
         // when
         List<SupplierQuote> quotes = provider.checkAvailability(
-                List.of(new SupplierOrderLine("5900000000001", "MFN-CLEAR-01", 5)));
+                List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)));
 
         // then
         assertEquals(1, quotes.size());
@@ -50,7 +50,7 @@ class AcmeSupplierProviderTest {
 
         // when
         List<SupplierQuote> quotes = provider.checkAvailability(
-                List.of(new SupplierOrderLine("5900000000001", "MFN-CLEAR-01", 1)));
+                List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 1)));
 
         // then
         assertEquals(0, quotes.get(0).availableQuantity());
@@ -64,7 +64,7 @@ class AcmeSupplierProviderTest {
 
         // when
         List<SupplierQuote> quotes = provider.checkAvailability(
-                List.of(new SupplierOrderLine("5900000000001", "MFN-CLEAR-01", 5)));
+                List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)));
 
         // then
         assertEquals(20, quotes.get(0).availableQuantity());
@@ -79,7 +79,7 @@ class AcmeSupplierProviderTest {
 
         // when
         List<SupplierQuote> quotes = provider.checkAvailability(
-                List.of(new SupplierOrderLine("5900000000003", "MFN-TWIN-01", 1)));
+                List.of(new SupplierOrderLine("ACME-5900000000003", "5900000000003", "MFN-TWIN-01", 1)));
 
         // then
         assertEquals(504.9, quotes.get(0).netPrice(), 0.01);
@@ -92,7 +92,7 @@ class AcmeSupplierProviderTest {
 
         // when
         List<SupplierQuote> quotes = provider.checkAvailability(
-                List.of(new SupplierOrderLine("0000000000000", "MFN-NOPE", 1)));
+                List.of(new SupplierOrderLine("ACME-0000000000000", "0000000000000", "MFN-NOPE", 1)));
 
         // then
         assertEquals(0, quotes.get(0).availableQuantity());
@@ -106,7 +106,7 @@ class AcmeSupplierProviderTest {
 
         // when
         SupplierOrderResult result = provider.placeOrder(new SupplierPurchaseRequest(
-                ref, List.of(new SupplierOrderLine("5900000000001", "MFN-CLEAR-01", 5))));
+                ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5))));
 
         // then
         assertEquals("ACME-PO-" + ref, result.externalOrderId());
@@ -120,8 +120,8 @@ class AcmeSupplierProviderTest {
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         SupplierPurchaseRequest request = new SupplierPurchaseRequest(
                 UUID.randomUUID().toString(),
-                List.of(new SupplierOrderLine("5900000000001", "MFN-CLEAR-01", 5),
-                        new SupplierOrderLine("5900000000002", "MFN-VALUE-01", 999)));
+                List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5),
+                        new SupplierOrderLine("ACME-5900000000002", "5900000000002", "MFN-VALUE-01", 999)));
 
         // when / then
         assertThrows(SupplierOrderException.class, () -> provider.placeOrder(request));
@@ -133,7 +133,7 @@ class AcmeSupplierProviderTest {
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         String ref = UUID.randomUUID().toString();
         SupplierPurchaseRequest request = new SupplierPurchaseRequest(
-                ref, List.of(new SupplierOrderLine("5900000000001", "MFN-CLEAR-01", 5)));
+                ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)));
 
         // when
         SupplierOrderResult first = provider.placeOrder(request);
@@ -151,7 +151,7 @@ class AcmeSupplierProviderTest {
         AcmeSupplierProvider blocked = new AcmeSupplierProvider(
                 Map.of("orderingUnavailableEans", "5900000000001"));
         SupplierPurchaseRequest request = new SupplierPurchaseRequest(
-                ref, List.of(new SupplierOrderLine("5900000000001", "MFN-CLEAR-01", 1)));
+                ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 1)));
         assertThrows(SupplierOrderException.class, () -> blocked.placeOrder(request));
 
         // when
@@ -160,5 +160,23 @@ class AcmeSupplierProviderTest {
 
         // then
         assertEquals("ACME-PO-" + ref, result.externalOrderId());
+    }
+
+    @Test
+    void quotesZeroForLineWithoutSku() {
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+        List<SupplierQuote> quotes = provider.checkAvailability(
+                List.of(new SupplierOrderLine(null, "5900000000001", "MFN-CLEAR-01", 1)));
+        assertEquals(0, quotes.getFirst().availableQuantity());
+        assertEquals("5900000000001", quotes.getFirst().ean());
+    }
+
+    @Test
+    void refusesOrderForLineWithoutSku() {
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+        SupplierOrderException e = assertThrows(SupplierOrderException.class, () -> provider.placeOrder(
+                new SupplierPurchaseRequest(UUID.randomUUID().toString(),
+                        List.of(new SupplierOrderLine(null, "5900000000001", "MFN-CLEAR-01", 1)))));
+        assertTrue(e.getMessage().contains("5900000000001"));
     }
 }

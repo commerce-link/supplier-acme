@@ -69,4 +69,16 @@ class AcmeCsvRowParserTest {
         // then
         assertEquals("Karty graficzne", result.product().rawCategory());
     }
+
+    @Test
+    void derivesSkuFromUnifiedEan() {
+        ParsedRow result = parser.parse(new String[]{"1234567890123", "MFN-1", "Brand", "Name", "CPU", "100.50", "PLN", "5"});
+        assertEquals("ACME-1234567890123", result.item().sku());
+    }
+
+    @Test
+    void derivesSkuFromUnifiedEanForLeadingZeroEan() {
+        ParsedRow result = parser.parse(new String[]{"0123456789012", "MFN-1", "Brand", "Name", "CPU", "100.50", "PLN", "5"});
+        assertEquals("ACME-" + result.item().ean(), result.item().sku());
+    }
 }
