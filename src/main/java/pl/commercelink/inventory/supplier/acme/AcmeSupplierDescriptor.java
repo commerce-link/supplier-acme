@@ -1,6 +1,5 @@
 package pl.commercelink.inventory.supplier.acme;
 
-import pl.commercelink.inventory.supplier.api.FeedData;
 import pl.commercelink.inventory.supplier.api.FeedFormat;
 import pl.commercelink.inventory.supplier.api.ShippingCostPolicy;
 import pl.commercelink.inventory.supplier.api.ShippingPolicy;
@@ -9,11 +8,10 @@ import pl.commercelink.inventory.supplier.api.SupplierProvider;
 import pl.commercelink.inventory.supplier.api.SupplierProviderDescriptor;
 import pl.commercelink.inventory.supplier.api.SupplierInfo;
 import pl.commercelink.inventory.supplier.api.SupplierType;
-import pl.commercelink.inventory.supplier.api.support.ResourceDownloadException;
+import pl.commercelink.provider.api.ProviderField;
 
-import java.io.IOException;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 public class AcmeSupplierDescriptor implements SupplierProviderDescriptor {
 
@@ -23,16 +21,16 @@ public class AcmeSupplierDescriptor implements SupplierProviderDescriptor {
 
     @Override
     public SupplierProvider create(Map<String, String> configuration) {
-        return () -> {
-            try {
-                byte[] bytes = getClass().getClassLoader()
-                        .getResourceAsStream("acme-products.csv")
-                        .readAllBytes();
-                return Optional.of(FeedData.csv(bytes));
-            } catch (IOException | NullPointerException e) {
-                throw new ResourceDownloadException("Failed to load acme-products.csv from resources", e);
-            }
-        };
+        return new AcmeSupplierProvider(configuration);
+    }
+
+    @Override
+    public List<ProviderField> configurationFields() {
+        return List.of(
+                new ProviderField("orderingUnavailableEans", "Ordering: unavailable EANs (CSV)",
+                        ProviderField.FieldType.TEXT, false, ""),
+                new ProviderField("orderingPriceDriftPercent", "Ordering: price drift %",
+                        ProviderField.FieldType.NUMBER, false, "0"));
     }
 
     @Override
