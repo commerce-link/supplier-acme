@@ -28,6 +28,11 @@ class AcmeOrderingContractTest extends SupplierOrderingContractTest {
     }
 
     @Override
+    protected String deliveryAddressId() {
+        return "2";
+    }
+
+    @Override
     protected String uniqueClientOrderRef() {
         return UUID.randomUUID().toString();
     }

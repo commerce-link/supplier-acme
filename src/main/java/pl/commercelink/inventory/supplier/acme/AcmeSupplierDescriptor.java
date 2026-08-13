@@ -27,10 +27,12 @@ public class AcmeSupplierDescriptor implements SupplierProviderDescriptor {
     @Override
     public List<ProviderField> configurationFields() {
         return List.of(
-                new ProviderField("orderingUnavailableEans", "Ordering: unavailable EANs (CSV)",
-                        ProviderField.FieldType.TEXT, false, ""),
-                new ProviderField("orderingPriceDriftPercent", "Ordering: price drift %",
-                        ProviderField.FieldType.NUMBER, false, "0"));
+                new ProviderField("orderingUnavailableEans", "Symulacja: EAN-y niedostępne u dostawcy",
+                        ProviderField.FieldType.TEXT, false,
+                        "np. 5900000000001,5900000000003 — po przecinku, zawsze kwotowane jako brak"),
+                new ProviderField("orderingPriceDriftPercent", "Symulacja: odchylenie ceny live od feedu (%)",
+                        ProviderField.FieldType.NUMBER, false,
+                        "np. 5 = ceny przy zamówieniu o 5% wyższe niż w feedzie"));
     }
 
     @Override
