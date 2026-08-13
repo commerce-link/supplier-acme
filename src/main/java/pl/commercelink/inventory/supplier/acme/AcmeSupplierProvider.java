@@ -1,6 +1,7 @@
 package pl.commercelink.inventory.supplier.acme;
 
 import pl.commercelink.inventory.supplier.api.FeedData;
+import pl.commercelink.inventory.supplier.api.SupplierDeliveryAddress;
 import pl.commercelink.inventory.supplier.api.SupplierOrderException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderLine;
 import pl.commercelink.inventory.supplier.api.SupplierOrderResult;
@@ -26,6 +27,12 @@ import static pl.commercelink.taxonomy.UnifiedProductIdentifiers.unifyEan;
 class AcmeSupplierProvider implements SupplierProvider {
 
     private static final Map<String, SupplierOrderResult> PLACED_ORDERS = new ConcurrentHashMap<>();
+
+    private static final List<SupplierDeliveryAddress> DELIVERY_ADDRESSES = List.of(
+            new SupplierDeliveryAddress("1", "ul. Przemysłowa 12", "Warszawa", "02-495", "PL"),
+            new SupplierDeliveryAddress("2", "ul. Zakopiańska 58", "Kraków", "30-418", "PL"),
+            new SupplierDeliveryAddress("3", "al. Grunwaldzka 411", "Gdańsk", "80-309", "PL"),
+            new SupplierDeliveryAddress("4", "ul. Krakowska 141", "Wrocław", "50-428", "PL"));
 
     private final Set<String> unavailableEans;
     private final double priceDriftFactor;
@@ -61,6 +68,16 @@ class AcmeSupplierProvider implements SupplierProvider {
     }
 
     @Override
+    public boolean requiresDeliveryAddress() {
+        return true;
+    }
+
+    @Override
+    public List<SupplierDeliveryAddress> deliveryAddresses() {
+        return DELIVERY_ADDRESSES;
+    }
+
+    @Override
     public List<SupplierQuote> checkAvailability(List<SupplierOrderLine> lines) {
         Map<String, String[]> feedBySku = feedRowsBySku();
         return lines.stream()
@@ -73,6 +90,10 @@ class AcmeSupplierProvider implements SupplierProvider {
         String clientOrderRef = request.clientOrderRef();
         if (clientOrderRef == null || clientOrderRef.isBlank()) {
             throw new SupplierOrderException("Missing clientOrderRef, refusing to place a non-idempotent ACME order");
+        }
+        if (DELIVERY_ADDRESSES.stream().noneMatch(address -> address.id().equals(request.deliveryAddressId()))) {
+            throw new SupplierOrderException(
+                    "Unknown ACME delivery address: " + request.deliveryAddressId());
         }
         return PLACED_ORDERS.computeIfAbsent(clientOrderRef, ref -> {
             for (SupplierOrderLine line : request.lines()) {

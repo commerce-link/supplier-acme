@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import pl.commercelink.inventory.supplier.api.SupplierOrderException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderLine;
 import pl.commercelink.inventory.supplier.api.SupplierOrderResult;
+import pl.commercelink.inventory.supplier.api.SupplierDeliveryAddress;
 import pl.commercelink.inventory.supplier.api.SupplierPurchaseRequest;
 import pl.commercelink.inventory.supplier.api.SupplierQuote;
 
@@ -16,6 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AcmeSupplierProviderTest {
+
+    private static SupplierPurchaseRequest purchase(String clientOrderRef, List<SupplierOrderLine> lines) {
+        return new SupplierPurchaseRequest(clientOrderRef, lines, "2");
+    }
+
 
     @Test
     void supportsOrdering() {
@@ -99,13 +105,38 @@ class AcmeSupplierProviderTest {
     }
 
     @Test
+    void listsSeveralDeliveryAddresses() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+
+        // when
+        List<SupplierDeliveryAddress> addresses = provider.deliveryAddresses();
+
+        // then
+        assertTrue(provider.requiresDeliveryAddress());
+        assertEquals(4, addresses.size());
+        assertEquals("ul. Zakopiańska 58, 30-418 Kraków, PL", addresses.get(1).label());
+    }
+
+    @Test
+    void rejectsOrderForAnAddressTheAccountDoesNotHave() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+        SupplierPurchaseRequest request = new SupplierPurchaseRequest(UUID.randomUUID().toString(),
+                List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 1)), "99");
+
+        // when / then
+        assertThrows(SupplierOrderException.class, () -> provider.placeOrder(request));
+    }
+
+    @Test
     void placesOrderWhenFullyAvailable() {
         // given
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         String ref = UUID.randomUUID().toString();
 
         // when
-        SupplierOrderResult result = provider.placeOrder(new SupplierPurchaseRequest(
+        SupplierOrderResult result = provider.placeOrder(purchase(
                 ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5))));
 
         // then
@@ -118,7 +149,7 @@ class AcmeSupplierProviderTest {
     void rejectsOrderWhenAnyLineExceedsAvailability() {
         // given
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
-        SupplierPurchaseRequest request = new SupplierPurchaseRequest(
+        SupplierPurchaseRequest request = purchase(
                 UUID.randomUUID().toString(),
                 List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5),
                         new SupplierOrderLine("ACME-5900000000002", "5900000000002", "MFN-VALUE-01", 999)));
@@ -132,7 +163,7 @@ class AcmeSupplierProviderTest {
         // given
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         String ref = UUID.randomUUID().toString();
-        SupplierPurchaseRequest request = new SupplierPurchaseRequest(
+        SupplierPurchaseRequest request = purchase(
                 ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)));
 
         // when
@@ -150,7 +181,7 @@ class AcmeSupplierProviderTest {
         String ref = UUID.randomUUID().toString();
         AcmeSupplierProvider blocked = new AcmeSupplierProvider(
                 Map.of("orderingUnavailableEans", "5900000000001"));
-        SupplierPurchaseRequest request = new SupplierPurchaseRequest(
+        SupplierPurchaseRequest request = purchase(
                 ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 1)));
         assertThrows(SupplierOrderException.class, () -> blocked.placeOrder(request));
 
@@ -175,7 +206,7 @@ class AcmeSupplierProviderTest {
     void refusesOrderForLineWithoutSku() {
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         SupplierOrderException e = assertThrows(SupplierOrderException.class, () -> provider.placeOrder(
-                new SupplierPurchaseRequest(UUID.randomUUID().toString(),
+                purchase(UUID.randomUUID().toString(),
                         List.of(new SupplierOrderLine(null, "5900000000001", "MFN-CLEAR-01", 1)))));
         assertTrue(e.getMessage().contains("5900000000001"));
     }
