@@ -13,6 +13,21 @@ Loaded via `ServiceLoader` (`META-INF/services`).
 | **Acme**  | Distributor | 5        | Free, 1-day                                      | `acme-products.csv`  |
 | **AcmeB** | Retailer    | 3        | Flat rate (14.99 PLN, free above 500 PLN), 3-day | `acmeb-products.csv` |
 
+## Ordering
+
+Both suppliers support ordering and answer availability from their own feed.
+Each one requires a delivery address picked from the same four mock addresses
+(ids `1`-`4`), and returns purchase orders under its own prefix — `ACME-PO-` and
+`ACMEB-PO-`. Orders are idempotent per supplier and client order reference, so
+the same reference used at both suppliers places two independent orders.
+
+Two optional configuration fields simulate a misbehaving supplier:
+
+| Field                       | Effect                                                     |
+|-----------------------------|------------------------------------------------------------|
+| `orderingUnavailableEans`   | Comma-separated EANs always quoted as out of stock          |
+| `orderingPriceDriftPercent` | Live order price drifts from the feed price by this percent |
+
 ## CSV format
 
 ```
