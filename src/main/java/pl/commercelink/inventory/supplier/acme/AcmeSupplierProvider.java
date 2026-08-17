@@ -2,6 +2,7 @@ package pl.commercelink.inventory.supplier.acme;
 
 import pl.commercelink.inventory.supplier.api.FeedData;
 import pl.commercelink.inventory.supplier.api.SupplierDeliveryAddress;
+import pl.commercelink.inventory.supplier.api.SupplierDropshipRequest;
 import pl.commercelink.inventory.supplier.api.SupplierInfo;
 import pl.commercelink.inventory.supplier.api.SupplierOrderException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderLine;
@@ -40,14 +41,21 @@ class AcmeSupplierProvider implements SupplierProvider {
     private final double priceDriftFactor;
     private final SupplierInfo supplier;
     private final String feedResource;
+    private final boolean supportsDropship;
 
     AcmeSupplierProvider(Map<String, String> configuration) {
-        this(configuration, AcmeSupplierDescriptor.SUPPLIER, "acme-products.csv");
+        this(configuration, AcmeSupplierDescriptor.SUPPLIER, "acme-products.csv", true);
     }
 
     AcmeSupplierProvider(Map<String, String> configuration, SupplierInfo supplier, String feedResource) {
+        this(configuration, supplier, feedResource, false);
+    }
+
+    AcmeSupplierProvider(Map<String, String> configuration, SupplierInfo supplier, String feedResource,
+                         boolean supportsDropship) {
         this.supplier = supplier;
         this.feedResource = feedResource;
+        this.supportsDropship = supportsDropship;
         String rawEans = trimmedOrDefault(configuration, "orderingUnavailableEans", "");
         this.unavailableEans = Arrays.stream(rawEans.split(","))
                 .map(String::trim)
@@ -106,33 +114,63 @@ class AcmeSupplierProvider implements SupplierProvider {
             throw new SupplierOrderException(
                     "Unknown " + supplier.name() + " delivery address: " + request.deliveryAddressId());
         }
-        return PLACED_ORDERS.computeIfAbsent(supplier.name() + "|" + clientOrderRef, key -> {
-            for (SupplierOrderLine line : request.lines()) {
-                if (line.sku() == null) {
-                    throw new SupplierOrderException(
-                            "No " + supplier.name() + " product code for EAN " + line.ean());
-                }
+        return PLACED_ORDERS.computeIfAbsent(supplier.name() + "|" + clientOrderRef,
+                key -> fulfil(request.lines(), orderIdPrefix() + clientOrderRef));
+    }
+
+    @Override
+    public boolean supportsDropshipping() {
+        return supportsDropship;
+    }
+
+    @Override
+    public SupplierOrderResult placeDropshipOrder(SupplierDropshipRequest request) {
+        if (!supportsDropship) {
+            throw new SupplierOrderException(supplier.name() + " does not support dropshipping");
+        }
+        String clientOrderRef = request.clientOrderRef();
+        if (clientOrderRef == null || clientOrderRef.isBlank()) {
+            throw new SupplierOrderException("Missing clientOrderRef, refusing to place a non-idempotent "
+                    + supplier.name() + " dropship order");
+        }
+        if (request.consignee() == null) {
+            throw new SupplierOrderException(
+                    "Missing consignee, refusing to place a " + supplier.name() + " dropship order");
+        }
+        return PLACED_ORDERS.computeIfAbsent(supplier.name() + "|DS|" + clientOrderRef,
+                key -> fulfil(request.lines(), dropshipOrderIdPrefix() + clientOrderRef));
+    }
+
+    private SupplierOrderResult fulfil(List<SupplierOrderLine> lines, String externalOrderId) {
+        for (SupplierOrderLine line : lines) {
+            if (line.sku() == null) {
+                throw new SupplierOrderException(
+                        "No " + supplier.name() + " product code for EAN " + line.ean());
             }
-            List<SupplierQuote> quotes = checkAvailability(request.lines());
-            for (int i = 0; i < request.lines().size(); i++) {
-                SupplierOrderLine line = request.lines().get(i);
-                SupplierQuote quote = quotes.get(i);
-                if (quote.availableQuantity() < line.quantity()) {
-                    throw new SupplierOrderException(
-                            "Insufficient availability for EAN " + line.ean()
-                                    + ": requested " + line.quantity()
-                                    + ", available " + quote.availableQuantity());
-                }
+        }
+        List<SupplierQuote> quotes = checkAvailability(lines);
+        for (int i = 0; i < lines.size(); i++) {
+            SupplierOrderLine line = lines.get(i);
+            SupplierQuote quote = quotes.get(i);
+            if (quote.availableQuantity() < line.quantity()) {
+                throw new SupplierOrderException(
+                        "Insufficient availability for EAN " + line.ean()
+                                + ": requested " + line.quantity()
+                                + ", available " + quote.availableQuantity());
             }
-            double totalNet = IntStream.range(0, request.lines().size())
-                    .mapToDouble(i -> request.lines().get(i).quantity() * quotes.get(i).netPrice())
-                    .sum();
-            return new SupplierOrderResult(orderIdPrefix() + clientOrderRef, totalNet, "PLN", quotes);
-        });
+        }
+        double totalNet = IntStream.range(0, lines.size())
+                .mapToDouble(i -> lines.get(i).quantity() * quotes.get(i).netPrice())
+                .sum();
+        return new SupplierOrderResult(externalOrderId, totalNet, "PLN", quotes);
     }
 
     private String orderIdPrefix() {
         return supplier.name().toUpperCase(Locale.ROOT) + "-PO-";
+    }
+
+    private String dropshipOrderIdPrefix() {
+        return supplier.name().toUpperCase(Locale.ROOT) + "-DS-";
     }
 
     private SupplierQuote toQuote(SupplierOrderLine line, String[] feedRow) {
