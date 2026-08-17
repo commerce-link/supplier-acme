@@ -52,10 +52,12 @@ class AcmeSupplierProvider implements SupplierProvider {
     }
 
     AcmeSupplierProvider(Map<String, String> configuration, SupplierInfo supplier, String feedResource,
-                         boolean supportsDropship) {
+                         boolean supportsDropshipByDefault) {
         this.supplier = supplier;
         this.feedResource = feedResource;
-        this.supportsDropship = supportsDropship;
+        String dropshipKnob = trimmedOrDefault(configuration, "orderingDropshipEnabled",
+                supportsDropshipByDefault ? "1" : "0");
+        this.supportsDropship = "1".equals(dropshipKnob) || "true".equalsIgnoreCase(dropshipKnob);
         String rawEans = trimmedOrDefault(configuration, "orderingUnavailableEans", "");
         this.unavailableEans = Arrays.stream(rawEans.split(","))
                 .map(String::trim)

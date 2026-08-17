@@ -60,4 +60,24 @@ class AcmeDropshipBehaviourTest {
         assertEquals("ACME-DS-" + ref, dropship.externalOrderId());
         assertNotEquals(regular.externalOrderId(), dropship.externalOrderId());
     }
+
+    @Test
+    void acmeBSupportsDropshippingWhenEnabledInConfiguration() {
+        // given
+        SupplierProvider acmeB = new AcmeBSupplierDescriptor().create(Map.of("orderingDropshipEnabled", "1"));
+
+        // when
+        SupplierOrderResult result = acmeB.placeDropshipOrder(
+                new SupplierDropshipRequest(UUID.randomUUID().toString(), sampleLines(), CONSIGNEE));
+
+        // then
+        assertTrue(acmeB.supportsDropshipping());
+        assertTrue(result.externalOrderId().startsWith("ACMEB-DS-"));
+    }
+
+    @Test
+    void dropshipConfigurationKnobCannotDisableAcme() {
+        // when / then
+        assertTrue(new AcmeSupplierDescriptor().create(Map.of()).supportsDropshipping());
+    }
 }
