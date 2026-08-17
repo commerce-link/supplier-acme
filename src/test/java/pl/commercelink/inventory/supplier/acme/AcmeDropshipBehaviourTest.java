@@ -32,9 +32,11 @@ class AcmeDropshipBehaviourTest {
 
     @Test
     void acmeSupportsDropshippingAndAcmeBDoesNot() {
+        // given
         SupplierProvider acme = new AcmeSupplierDescriptor().create(Map.of());
         SupplierProvider acmeB = new AcmeBSupplierDescriptor().create(Map.of());
 
+        // when / then
         assertTrue(acme.supportsDropshipping());
         assertFalse(acmeB.supportsDropshipping());
         assertThrows(SupplierOrderException.class, () -> acmeB.placeDropshipOrder(
@@ -43,14 +45,17 @@ class AcmeDropshipBehaviourTest {
 
     @Test
     void dropshipAndRegularOrderWithSameRefAreIndependent() {
+        // given
         SupplierProvider acme = new AcmeSupplierDescriptor().create(Map.of());
         String ref = UUID.randomUUID().toString();
 
+        // when
         SupplierOrderResult regular = acme.placeOrder(
                 new SupplierPurchaseRequest(ref, sampleLines(), "1"));
         SupplierOrderResult dropship = acme.placeDropshipOrder(
                 new SupplierDropshipRequest(ref, sampleLines(), CONSIGNEE));
 
+        // then
         assertEquals("ACME-PO-" + ref, regular.externalOrderId());
         assertEquals("ACME-DS-" + ref, dropship.externalOrderId());
         assertNotEquals(regular.externalOrderId(), dropship.externalOrderId());
