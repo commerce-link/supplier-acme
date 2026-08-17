@@ -2,6 +2,7 @@ package pl.commercelink.inventory.supplier.acme;
 
 import pl.commercelink.inventory.supplier.api.FeedData;
 import pl.commercelink.inventory.supplier.api.SupplierDeliveryAddress;
+import pl.commercelink.inventory.supplier.api.SupplierInfo;
 import pl.commercelink.inventory.supplier.api.SupplierOrderException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderLine;
 import pl.commercelink.inventory.supplier.api.SupplierOrderResult;
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -36,8 +38,16 @@ class AcmeSupplierProvider implements SupplierProvider {
 
     private final Set<String> unavailableEans;
     private final double priceDriftFactor;
+    private final SupplierInfo supplier;
+    private final String feedResource;
 
     AcmeSupplierProvider(Map<String, String> configuration) {
+        this(configuration, AcmeSupplierDescriptor.SUPPLIER, "acme-products.csv");
+    }
+
+    AcmeSupplierProvider(Map<String, String> configuration, SupplierInfo supplier, String feedResource) {
+        this.supplier = supplier;
+        this.feedResource = feedResource;
         String rawEans = trimmedOrDefault(configuration, "orderingUnavailableEans", "");
         this.unavailableEans = Arrays.stream(rawEans.split(","))
                 .map(String::trim)
@@ -58,7 +68,7 @@ class AcmeSupplierProvider implements SupplierProvider {
         try {
             return Optional.of(FeedData.csv(feedBytes()));
         } catch (RuntimeException e) {
-            throw new ResourceDownloadException("Failed to download ACME feed", e);
+            throw new ResourceDownloadException("Failed to download " + supplier.name() + " feed", e);
         }
     }
 
@@ -89,16 +99,18 @@ class AcmeSupplierProvider implements SupplierProvider {
     public SupplierOrderResult placeOrder(SupplierPurchaseRequest request) {
         String clientOrderRef = request.clientOrderRef();
         if (clientOrderRef == null || clientOrderRef.isBlank()) {
-            throw new SupplierOrderException("Missing clientOrderRef, refusing to place a non-idempotent ACME order");
+            throw new SupplierOrderException(
+                    "Missing clientOrderRef, refusing to place a non-idempotent " + supplier.name() + " order");
         }
         if (DELIVERY_ADDRESSES.stream().noneMatch(address -> address.id().equals(request.deliveryAddressId()))) {
             throw new SupplierOrderException(
-                    "Unknown ACME delivery address: " + request.deliveryAddressId());
+                    "Unknown " + supplier.name() + " delivery address: " + request.deliveryAddressId());
         }
-        return PLACED_ORDERS.computeIfAbsent(clientOrderRef, ref -> {
+        return PLACED_ORDERS.computeIfAbsent(supplier.name() + "|" + clientOrderRef, key -> {
             for (SupplierOrderLine line : request.lines()) {
                 if (line.sku() == null) {
-                    throw new SupplierOrderException("No ACME product code for EAN " + line.ean());
+                    throw new SupplierOrderException(
+                            "No " + supplier.name() + " product code for EAN " + line.ean());
                 }
             }
             List<SupplierQuote> quotes = checkAvailability(request.lines());
@@ -115,8 +127,12 @@ class AcmeSupplierProvider implements SupplierProvider {
             double totalNet = IntStream.range(0, request.lines().size())
                     .mapToDouble(i -> request.lines().get(i).quantity() * quotes.get(i).netPrice())
                     .sum();
-            return new SupplierOrderResult("ACME-PO-" + ref, totalNet, "PLN", quotes);
+            return new SupplierOrderResult(orderIdPrefix() + clientOrderRef, totalNet, "PLN", quotes);
         });
+    }
+
+    private String orderIdPrefix() {
+        return supplier.name().toUpperCase(Locale.ROOT) + "-PO-";
     }
 
     private SupplierQuote toQuote(SupplierOrderLine line, String[] feedRow) {
@@ -139,10 +155,10 @@ class AcmeSupplierProvider implements SupplierProvider {
     private byte[] feedBytes() {
         try {
             return getClass().getClassLoader()
-                    .getResourceAsStream("acme-products.csv")
+                    .getResourceAsStream(feedResource)
                     .readAllBytes();
         } catch (IOException | NullPointerException e) {
-            throw new RuntimeException("Failed to load acme-products.csv from resources", e);
+            throw new RuntimeException("Failed to load " + feedResource + " from resources", e);
         }
     }
 }
