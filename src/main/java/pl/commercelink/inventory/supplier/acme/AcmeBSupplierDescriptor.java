@@ -34,7 +34,10 @@ public class AcmeBSupplierDescriptor implements SupplierProviderDescriptor {
                         "np. 5900000000001,5900000000003 — po przecinku, zawsze kwotowane jako brak"),
                 new ProviderField("orderingPriceDriftPercent", "Symulacja: odchylenie ceny live od feedu (%)",
                         ProviderField.FieldType.NUMBER, false,
-                        "np. 5 = ceny przy zamówieniu o 5% wyższe niż w feedzie"));
+                        "np. 5 = ceny przy zamówieniu o 5% wyższe niż w feedzie"),
+                new ProviderField("orderingDropshipEnabled", "Symulacja: dropshipping (1 = włączony)",
+                        ProviderField.FieldType.NUMBER, false,
+                        "domyślnie wyłączony — AcmeB służy też jako dostawca bez dropshippingu"));
     }
 
     @Override
