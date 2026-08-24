@@ -6,11 +6,13 @@ import pl.commercelink.inventory.supplier.api.SupplierDropshipRequest;
 import pl.commercelink.inventory.supplier.api.SupplierInfo;
 import pl.commercelink.inventory.supplier.api.SupplierOrderException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderLine;
+import pl.commercelink.inventory.supplier.api.SupplierOrderRejectedException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderResult;
 import pl.commercelink.inventory.supplier.api.SupplierProvider;
 import pl.commercelink.inventory.supplier.api.SupplierPurchaseRequest;
 import pl.commercelink.inventory.supplier.api.SupplierQuote;
 import pl.commercelink.inventory.supplier.api.support.ResourceDownloadException;
+import pl.commercelink.inventory.supplier.api.SupplierOrderOutcomeUnknownException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -143,6 +145,15 @@ class AcmeSupplierProvider implements SupplierProvider {
                 key -> fulfil(request.lines(), dropshipOrderIdPrefix() + clientOrderRef));
     }
 
+    @Override
+    public Optional<SupplierOrderResult> findPlacedOrder(SupplierPurchaseRequest request) {
+        String clientOrderRef = request.clientOrderRef();
+        if (clientOrderRef == null || clientOrderRef.isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(PLACED_ORDERS.get(supplier.name() + "|" + clientOrderRef));
+    }
+
     private SupplierOrderResult fulfil(List<SupplierOrderLine> lines, String externalOrderId) {
         for (SupplierOrderLine line : lines) {
             if (line.sku() == null) {
@@ -155,7 +166,7 @@ class AcmeSupplierProvider implements SupplierProvider {
             SupplierOrderLine line = lines.get(i);
             SupplierQuote quote = quotes.get(i);
             if (quote.availableQuantity() < line.quantity()) {
-                throw new SupplierOrderException(
+                throw new SupplierOrderRejectedException(
                         "Insufficient availability for EAN " + line.ean()
                                 + ": requested " + line.quantity()
                                 + ", available " + quote.availableQuantity());

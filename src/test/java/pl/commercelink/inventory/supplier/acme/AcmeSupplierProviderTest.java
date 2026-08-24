@@ -10,11 +10,13 @@ import pl.commercelink.inventory.supplier.api.SupplierQuote;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class AcmeSupplierProviderTest {
 
@@ -209,5 +211,42 @@ class AcmeSupplierProviderTest {
                 purchase(UUID.randomUUID().toString(),
                         List.of(new SupplierOrderLine(null, "5900000000001", "MFN-CLEAR-01", 1)))));
         assertTrue(e.getMessage().contains("5900000000001"));
+    }
+
+    @Test
+    void findPlacedOrderReturnsResultByClientOrderRef() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+        String ref = UUID.randomUUID().toString();
+        SupplierPurchaseRequest request = purchase(
+                ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)));
+
+        // when
+        SupplierOrderResult placed = provider.placeOrder(request);
+        Optional<SupplierOrderResult> found = provider.findPlacedOrder(request);
+
+        // then
+        assertTrue(found.isPresent());
+        assertEquals(placed.externalOrderId(), found.get().externalOrderId());
+        assertEquals(placed.totalNet(), found.get().totalNet());
+    }
+
+    @Test
+    void findPlacedOrderReturnsEmptyForDifferentRef() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+        String ref = UUID.randomUUID().toString();
+        SupplierPurchaseRequest request = purchase(
+                ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)));
+
+        // when
+        provider.placeOrder(request);
+        String differentRef = UUID.randomUUID().toString();
+        SupplierPurchaseRequest differentRequest = purchase(
+                differentRef, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)));
+        Optional<SupplierOrderResult> notFound = provider.findPlacedOrder(differentRequest);
+
+        // then
+        assertFalse(notFound.isPresent());
     }
 }
