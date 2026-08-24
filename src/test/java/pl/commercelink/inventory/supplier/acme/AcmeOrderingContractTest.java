@@ -46,56 +46,11 @@ class AcmeOrderingContractTest extends SupplierOrderingContractTest {
 
     @Override
     protected SupplierProvider providerWithPlacementTransportFailure() {
-        AcmeSupplierProvider baseProvider = new AcmeSupplierProvider(Map.of());
-        return new SupplierProvider() {
-            @Override
-            public java.util.Optional<pl.commercelink.inventory.supplier.api.FeedData> download()
-                    throws pl.commercelink.inventory.supplier.api.support.ResourceDownloadException {
-                return baseProvider.download();
-            }
-
-            @Override
-            public boolean supportsOrdering() {
-                return baseProvider.supportsOrdering();
-            }
-
-            @Override
-            public boolean requiresDeliveryAddress() {
-                return baseProvider.requiresDeliveryAddress();
-            }
-
-            @Override
-            public List<pl.commercelink.inventory.supplier.api.SupplierDeliveryAddress> deliveryAddresses() {
-                return baseProvider.deliveryAddresses();
-            }
-
-            @Override
-            public List<pl.commercelink.inventory.supplier.api.SupplierQuote> checkAvailability(
-                    List<pl.commercelink.inventory.supplier.api.SupplierOrderLine> lines) {
-                return baseProvider.checkAvailability(lines);
-            }
-
+        return new AcmeSupplierProvider(Map.of()) {
             @Override
             public pl.commercelink.inventory.supplier.api.SupplierOrderResult placeOrder(
                     SupplierPurchaseRequest request) {
-                throw new SupplierOrderOutcomeUnknownException("Simulated transport failure");
-            }
-
-            @Override
-            public boolean supportsDropshipping() {
-                return baseProvider.supportsDropshipping();
-            }
-
-            @Override
-            public pl.commercelink.inventory.supplier.api.SupplierOrderResult placeDropshipOrder(
-                    pl.commercelink.inventory.supplier.api.SupplierDropshipRequest request) {
-                return baseProvider.placeDropshipOrder(request);
-            }
-
-            @Override
-            public java.util.Optional<pl.commercelink.inventory.supplier.api.SupplierOrderResult> findPlacedOrder(
-                    SupplierPurchaseRequest request) {
-                return baseProvider.findPlacedOrder(request);
+                throw new SupplierOrderOutcomeUnknownException("simulated transport failure during placement");
             }
         };
     }
