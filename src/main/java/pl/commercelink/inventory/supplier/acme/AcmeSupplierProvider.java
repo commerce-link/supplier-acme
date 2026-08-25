@@ -6,9 +6,11 @@ import pl.commercelink.inventory.supplier.api.SupplierDropshipRequest;
 import pl.commercelink.inventory.supplier.api.SupplierInfo;
 import pl.commercelink.inventory.supplier.api.SupplierOrderException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderLine;
+import pl.commercelink.inventory.supplier.api.SupplierOrderLookup;
 import pl.commercelink.inventory.supplier.api.SupplierOrderOutcomeUnknownException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderRejectedException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderResult;
+import pl.commercelink.inventory.supplier.api.SupplierOrderTracking;
 import pl.commercelink.inventory.supplier.api.SupplierProvider;
 import pl.commercelink.inventory.supplier.api.SupplierPurchaseRequest;
 import pl.commercelink.inventory.supplier.api.SupplierQuote;
@@ -44,6 +46,7 @@ class AcmeSupplierProvider implements SupplierProvider {
     private final SupplierInfo supplier;
     private final String feedResource;
     private final boolean supportsDropship;
+    private final AcmeTrackingSimulation tracking;
 
     AcmeSupplierProvider(Map<String, String> configuration) {
         this(configuration, AcmeSupplierDescriptor.SUPPLIER, "acme-products.csv", true);
@@ -68,6 +71,7 @@ class AcmeSupplierProvider implements SupplierProvider {
         double driftPercent = Double.parseDouble(
                 trimmedOrDefault(configuration, "orderingPriceDriftPercent", "0"));
         this.priceDriftFactor = 1 + driftPercent / 100;
+        this.tracking = new AcmeTrackingSimulation(configuration);
     }
 
     private static String trimmedOrDefault(Map<String, String> configuration, String key, String defaultValue) {
@@ -152,6 +156,39 @@ class AcmeSupplierProvider implements SupplierProvider {
             return Optional.empty();
         }
         return Optional.ofNullable(PLACED_ORDERS.get(supplier.name() + "|" + clientOrderRef));
+    }
+
+    @Override
+    public boolean supportsOrderTracking() {
+        return true;
+    }
+
+    @Override
+    public Optional<SupplierOrderTracking> trackOrder(SupplierOrderLookup lookup) {
+        return findPlacedEntry(lookup).map(entry -> tracking.track(entry.getKey(), entry.getValue()));
+    }
+
+    private Optional<Map.Entry<String, SupplierOrderResult>> findPlacedEntry(SupplierOrderLookup lookup) {
+        String prefix = supplier.name() + "|";
+        if (lookup.externalOrderId() != null) {
+            Optional<Map.Entry<String, SupplierOrderResult>> byId = PLACED_ORDERS.entrySet().stream()
+                    .filter(entry -> entry.getKey().startsWith(prefix))
+                    .filter(entry -> lookup.externalOrderId().equals(entry.getValue().externalOrderId()))
+                    .findFirst();
+            if (byId.isPresent()) {
+                return byId;
+            }
+        }
+        if (lookup.clientOrderRef() == null) {
+            return Optional.empty();
+        }
+        for (String key : List.of(prefix + "DS|" + lookup.clientOrderRef(), prefix + lookup.clientOrderRef())) {
+            SupplierOrderResult placed = PLACED_ORDERS.get(key);
+            if (placed != null) {
+                return Optional.of(Map.entry(key, placed));
+            }
+        }
+        return Optional.empty();
     }
 
     private SupplierOrderResult fulfil(List<SupplierOrderLine> lines, String externalOrderId) {

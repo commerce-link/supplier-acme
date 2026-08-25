@@ -37,7 +37,13 @@ public class AcmeBSupplierDescriptor implements SupplierProviderDescriptor {
                         "np. 5 = ceny przy zamówieniu o 5% wyższe niż w feedzie"),
                 new ProviderField("orderingDropshipEnabled", "Symulacja: dropshipping (1 = włączony)",
                         ProviderField.FieldType.NUMBER, false,
-                        "domyślnie wyłączony — AcmeB służy też jako dostawca bez dropshippingu"));
+                        "domyślnie wyłączony — AcmeB służy też jako dostawca bez dropshippingu"),
+                new ProviderField("trackingShipAfterChecks", "Symulacja: wysyłka po N-tym sprawdzeniu statusu",
+                        ProviderField.FieldType.NUMBER, false,
+                        "domyślnie 2 — wcześniejsze sprawdzenia zwracają „w realizacji”"),
+                new ProviderField("trackingScenario", "Symulacja: scenariusz śledzenia",
+                        ProviderField.FieldType.TEXT, false,
+                        "single (1 paczka, domyślnie) | parts (2 paczki w dwóch sprawdzeniach) | cancel (dostawca anulował) | nodata (wysłane bez danych przesyłki)"));
     }
 
     @Override

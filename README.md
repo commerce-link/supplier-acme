@@ -28,6 +28,18 @@ Two optional configuration fields simulate a misbehaving supplier:
 | `orderingUnavailableEans`   | Comma-separated EANs always quoted as out of stock          |
 | `orderingPriceDriftPercent` | Live order price drifts from the feed price by this percent |
 
+### Tracking simulation
+
+Both suppliers answer `supportsOrderTracking()`. `trackOrder` finds the order by its Acme number
+(`ACME-PO-…`/`ACME-DS-…`) or by client reference and replays a scripted lifecycle:
+
+| Knob | Default | Effect |
+|---|---|---|
+| `trackingShipAfterChecks` | `2` | checks 1..N-1 answer `PROCESSING`; from the N-th the scenario applies |
+| `trackingScenario` | `single` | `single` — `SHIPPED`, one DPD parcel `ACME-TRK-<ref>` without lines; `parts` — N-th check `PARTIALLY_SHIPPED` with parcel `-1` (first line), next check `SHIPPED` with parcels `-1` and `-2` (remaining lines); `cancel` — `CANCELLED`; `nodata` — `SHIPPED` without parcels |
+
+Check counters and generated parcels are static (per JVM), like the placed-order store.
+
 ## CSV format
 
 ```
