@@ -1,7 +1,9 @@
 package pl.commercelink.inventory.supplier.acme;
 
 import pl.commercelink.inventory.supplier.api.SupplierOrderLine;
+import pl.commercelink.inventory.supplier.api.SupplierOrderOutcomeUnknownException;
 import pl.commercelink.inventory.supplier.api.SupplierProvider;
+import pl.commercelink.inventory.supplier.api.SupplierPurchaseRequest;
 import pl.commercelink.inventory.supplier.api.testing.SupplierOrderingContractTest;
 
 import java.util.List;
@@ -35,5 +37,21 @@ class AcmeBOrderingContractTest extends SupplierOrderingContractTest {
     @Override
     protected String uniqueClientOrderRef() {
         return UUID.randomUUID().toString();
+    }
+
+    @Override
+    protected SupplierProvider providerRejectingOrders() {
+        return new AcmeBSupplierDescriptor().create(Map.of("orderingUnavailableEans", SAMPLE_EAN));
+    }
+
+    @Override
+    protected SupplierProvider providerWithPlacementTransportFailure() {
+        return new AcmeSupplierProvider(Map.of(), AcmeBSupplierDescriptor.SUPPLIER, "acmeb-products.csv") {
+            @Override
+            public pl.commercelink.inventory.supplier.api.SupplierOrderResult placeOrder(
+                    SupplierPurchaseRequest request) {
+                throw new SupplierOrderOutcomeUnknownException("simulated transport failure during placement");
+            }
+        };
     }
 }
