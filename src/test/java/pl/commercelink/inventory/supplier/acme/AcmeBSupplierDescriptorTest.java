@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AcmeBSupplierDescriptorTest {
 
     private static final List<SupplierOrderLine> SAMPLE_LINES =
-            List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 1));
+            List.of(new SupplierOrderLine("ACME-5900000000002", "5900000000002", "MFN-VALUE-01", 1));
 
     @Test
     void createdProviderSupportsOrdering() {
