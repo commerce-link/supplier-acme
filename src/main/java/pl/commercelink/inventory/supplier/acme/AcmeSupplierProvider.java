@@ -36,9 +36,6 @@ class AcmeSupplierProvider implements SupplierProvider {
 
     private static final Map<String, SupplierOrderResult> PLACED_ORDERS = new ConcurrentHashMap<>();
 
-    /** Pickup point code recorded per placed dropship order, keyed like {@link #PLACED_ORDERS}. */
-    private static final Map<String, String> PICKUP_POINTS = new ConcurrentHashMap<>();
-
     /** Pickup point code most recently recorded per supplier name, for the dropship contract kit. */
     private static final Map<String, String> LAST_PICKUP_POINT_CODE = new ConcurrentHashMap<>();
 
@@ -170,11 +167,9 @@ class AcmeSupplierProvider implements SupplierProvider {
                     + " does not deliver dropship orders to carrier pickup points (requested "
                     + pickupPoint.carrier() + " " + pickupPoint.code() + ")");
         }
-        String key = supplier.name() + "|DS|" + clientOrderRef;
-        return PLACED_ORDERS.computeIfAbsent(key, k -> {
+        return PLACED_ORDERS.computeIfAbsent(supplier.name() + "|DS|" + clientOrderRef, key -> {
             SupplierOrderResult result = fulfil(request.lines(), dropshipOrderIdPrefix() + clientOrderRef);
             if (pickupPoint != null) {
-                PICKUP_POINTS.put(k, pickupPoint.code());
                 LAST_PICKUP_POINT_CODE.put(supplier.name(), pickupPoint.code());
             }
             return result;
