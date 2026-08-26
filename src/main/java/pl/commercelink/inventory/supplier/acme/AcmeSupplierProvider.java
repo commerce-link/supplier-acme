@@ -46,6 +46,7 @@ class AcmeSupplierProvider implements SupplierProvider {
     private final SupplierInfo supplier;
     private final String feedResource;
     private final boolean supportsDropship;
+    private final boolean pickupPoints;
     private final AcmeTrackingSimulation tracking;
 
     AcmeSupplierProvider(Map<String, String> configuration) {
@@ -63,6 +64,8 @@ class AcmeSupplierProvider implements SupplierProvider {
         String dropshipKnob = trimmedOrDefault(configuration, "orderingDropshipEnabled",
                 supportsDropshipByDefault ? "1" : "0");
         this.supportsDropship = "1".equals(dropshipKnob) || "true".equalsIgnoreCase(dropshipKnob);
+        String pickupKnob = trimmedOrDefault(configuration, "orderingPickupPointsEnabled", "1");
+        this.pickupPoints = "1".equals(pickupKnob) || "true".equalsIgnoreCase(pickupKnob);
         String rawEans = trimmedOrDefault(configuration, "orderingUnavailableEans", "");
         this.unavailableEans = Arrays.stream(rawEans.split(","))
                 .map(String::trim)
@@ -132,6 +135,11 @@ class AcmeSupplierProvider implements SupplierProvider {
     }
 
     @Override
+    public boolean supportsPickupPointDropship() {
+        return supportsDropship && pickupPoints;
+    }
+
+    @Override
     public SupplierOrderResult placeDropshipOrder(SupplierDropshipRequest request) {
         if (!supportsDropship) {
             throw new SupplierOrderException(supplier.name() + " does not support dropshipping");
@@ -144,6 +152,11 @@ class AcmeSupplierProvider implements SupplierProvider {
         if (request.consignee() == null) {
             throw new SupplierOrderException(
                     "Missing consignee, refusing to place a " + supplier.name() + " dropship order");
+        }
+        if (request.pickupPoint() != null && !supportsPickupPointDropship()) {
+            throw new SupplierOrderRejectedException(supplier.name()
+                    + " does not deliver dropship orders to carrier pickup points (requested "
+                    + request.pickupPoint().carrier() + " " + request.pickupPoint().code() + ")");
         }
         return PLACED_ORDERS.computeIfAbsent(supplier.name() + "|DS|" + clientOrderRef,
                 key -> fulfil(request.lines(), dropshipOrderIdPrefix() + clientOrderRef));

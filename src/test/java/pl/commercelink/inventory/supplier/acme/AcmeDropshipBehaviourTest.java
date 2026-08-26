@@ -5,7 +5,9 @@ import pl.commercelink.inventory.supplier.api.SupplierConsignee;
 import pl.commercelink.inventory.supplier.api.SupplierDropshipRequest;
 import pl.commercelink.inventory.supplier.api.SupplierOrderException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderLine;
+import pl.commercelink.inventory.supplier.api.SupplierOrderRejectedException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderResult;
+import pl.commercelink.inventory.supplier.api.SupplierPickupPoint;
 import pl.commercelink.inventory.supplier.api.SupplierProvider;
 import pl.commercelink.inventory.supplier.api.SupplierPurchaseRequest;
 
@@ -26,6 +28,8 @@ class AcmeDropshipBehaviourTest {
 
     private static final SupplierConsignee CONSIGNEE = new SupplierConsignee(null, "Jan", "Kowalski",
             "ul. Polna 1", "00-001", "Warszawa", "PL", "+48601234567", "jan.kowalski@example.com");
+
+    private static final SupplierPickupPoint LOCKER = new SupplierPickupPoint("InPost", "WAW04A", null, null, null, null);
 
     private static List<SupplierOrderLine> sampleLines() {
         return List.of(new SupplierOrderLine("ACME-" + SAMPLE_EAN, SAMPLE_EAN, "MFN-CLEAR-01", 1));
@@ -84,5 +88,38 @@ class AcmeDropshipBehaviourTest {
     void dropshipConfigurationKnobCannotDisableAcme() {
         // when / then
         assertTrue(new AcmeSupplierDescriptor().create(Map.of()).supportsDropshipping());
+    }
+
+    @Test
+    void acmeDeliversDropshipOrdersToPickupPoints() {
+        // given
+        SupplierProvider acme = new AcmeSupplierDescriptor().create(Map.of());
+        String ref = UUID.randomUUID().toString();
+
+        // when
+        SupplierOrderResult result = acme.placeDropshipOrder(
+                new SupplierDropshipRequest(ref, sampleLines(), CONSIGNEE, null, LOCKER));
+
+        // then
+        assertTrue(acme.supportsPickupPointDropship());
+        assertEquals("ACME-DS-" + ref, result.externalOrderId());
+    }
+
+    @Test
+    void pickupPointsCanBeDisabledByConfigurationAndThenRejectSuchOrders() {
+        // given
+        SupplierProvider acme = new AcmeSupplierDescriptor().create(Map.of("orderingPickupPointsEnabled", "0"));
+
+        // when / then
+        assertFalse(acme.supportsPickupPointDropship());
+        assertTrue(acme.supportsDropshipping());
+        assertThrows(SupplierOrderRejectedException.class, () -> acme.placeDropshipOrder(
+                new SupplierDropshipRequest(UUID.randomUUID().toString(), sampleLines(), CONSIGNEE, null, LOCKER)));
+    }
+
+    @Test
+    void acmeBWithoutDropshipDoesNotSupportPickupPoints() {
+        // when / then
+        assertFalse(new AcmeBSupplierDescriptor().create(Map.of()).supportsPickupPointDropship());
     }
 }

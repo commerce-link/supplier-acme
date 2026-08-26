@@ -21,12 +21,13 @@ Each one requires a delivery address picked from the same four mock addresses
 `ACMEB-PO-`. Orders are idempotent per supplier and client order reference, so
 the same reference used at both suppliers places two independent orders.
 
-Two optional configuration fields simulate a misbehaving supplier:
+Optional configuration fields tune ordering behaviour:
 
-| Field                       | Effect                                                     |
-|-----------------------------|------------------------------------------------------------|
-| `orderingUnavailableEans`   | Comma-separated EANs always quoted as out of stock          |
-| `orderingPriceDriftPercent` | Live order price drifts from the feed price by this percent |
+| Field                         | Default | Effect                                                                                                                                                          |
+|--------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `orderingUnavailableEans`     |         | Comma-separated EANs always quoted as out of stock                                                                                                            |
+| `orderingPriceDriftPercent`   | 0       | Live order price drifts from the feed price by this percent                                                                                                   |
+| `orderingPickupPointsEnabled` | 1       | Acme only: 0/false makes supportsPickupPointDropship() false — a dropship request with a pickup point is then rejected (SupplierOrderRejectedException) without placing anything |
 
 ### Tracking simulation
 
