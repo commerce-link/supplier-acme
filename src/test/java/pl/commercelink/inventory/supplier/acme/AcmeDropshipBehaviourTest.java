@@ -22,12 +22,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AcmeDropshipBehaviourTest {
 
     private static final String SAMPLE_EAN = "5900000000001";
+    private static final String ACME_B_EAN = "5900000000002";
 
     private static final SupplierConsignee CONSIGNEE = new SupplierConsignee(null, "Jan", "Kowalski",
             "ul. Polna 1", "00-001", "Warszawa", "PL", "+48601234567", "jan.kowalski@example.com");
 
     private static List<SupplierOrderLine> sampleLines() {
         return List.of(new SupplierOrderLine("ACME-" + SAMPLE_EAN, SAMPLE_EAN, "MFN-CLEAR-01", 1));
+    }
+
+    private static List<SupplierOrderLine> acmeBLines() {
+        return List.of(new SupplierOrderLine("ACME-" + ACME_B_EAN, ACME_B_EAN, "MFN-VALUE-01", 1));
     }
 
     @Test
@@ -68,7 +73,7 @@ class AcmeDropshipBehaviourTest {
 
         // when
         SupplierOrderResult result = acmeB.placeDropshipOrder(
-                new SupplierDropshipRequest(UUID.randomUUID().toString(), sampleLines(), CONSIGNEE));
+                new SupplierDropshipRequest(UUID.randomUUID().toString(), acmeBLines(), CONSIGNEE));
 
         // then
         assertTrue(acmeB.supportsDropshipping());

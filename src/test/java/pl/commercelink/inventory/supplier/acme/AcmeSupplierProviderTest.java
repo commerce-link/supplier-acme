@@ -249,4 +249,31 @@ class AcmeSupplierProviderTest {
         // then
         assertFalse(notFound.isPresent());
     }
+
+    @Test
+    void quotesProductsBeyondTheOriginalSampleCatalog() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+
+        // when
+        List<SupplierQuote> quotes = provider.checkAvailability(
+                List.of(new SupplierOrderLine("ACME-5900000000014", "5900000000014", "B650-TOMAHAWK-WIFI", 1)));
+
+        // then
+        assertEquals(20, quotes.getFirst().availableQuantity());
+        assertEquals(730.89, quotes.getFirst().netPrice(), 0.01);
+    }
+
+    @Test
+    void feedHeaderIsNotQuotedAsAProduct() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+
+        // when
+        List<SupplierQuote> quotes = provider.checkAvailability(
+                List.of(new SupplierOrderLine("ACME-ean", "ean", "mfn", 1)));
+
+        // then
+        assertEquals(0, quotes.getFirst().availableQuantity());
+    }
 }

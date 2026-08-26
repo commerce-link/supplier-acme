@@ -12,7 +12,7 @@ import java.util.UUID;
 
 class AcmeBOrderingContractTest extends SupplierOrderingContractTest {
 
-    private static final String SAMPLE_EAN = "5900000000001";
+    private static final String SAMPLE_EAN = "5900000000002";
 
     @Override
     protected SupplierProvider providerFullyAvailable() {
@@ -26,7 +26,7 @@ class AcmeBOrderingContractTest extends SupplierOrderingContractTest {
 
     @Override
     protected List<SupplierOrderLine> sampleLines() {
-        return List.of(new SupplierOrderLine("ACME-" + SAMPLE_EAN, SAMPLE_EAN, "MFN-CLEAR-01", 1));
+        return List.of(new SupplierOrderLine("ACME-" + SAMPLE_EAN, SAMPLE_EAN, "MFN-VALUE-01", 1));
     }
 
     @Override
