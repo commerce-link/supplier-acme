@@ -198,6 +198,7 @@ class AcmeSupplierProvider implements SupplierProvider {
     private Map<String, String[]> feedRowsBySku() {
         String feed = new String(feedBytes(), StandardCharsets.UTF_8);
         return feed.lines()
+                .skip(1)
                 .filter(row -> !row.isBlank())
                 .map(row -> row.split(";"))
                 .collect(Collectors.toMap(row -> "ACME-" + unifyEan(row[0]), Function.identity()));
