@@ -23,11 +23,11 @@ the same reference used at both suppliers places two independent orders.
 
 Optional configuration fields tune ordering behaviour:
 
-| Field                         | Default | Effect                                                                                                                                                          |
-|--------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `orderingUnavailableEans`     |         | Comma-separated EANs always quoted as out of stock                                                                                                            |
-| `orderingPriceDriftPercent`   | 0       | Live order price drifts from the feed price by this percent                                                                                                   |
-| `orderingPickupPointsEnabled` | 1       | Acme only: 0/false makes supportsPickupPointDropship() false — a dropship request with a pickup point is then rejected (SupplierOrderRejectedException) without placing anything |
+| Field                         | Default | Effect                                                                                                                                                                                                                    |
+|-------------------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `orderingUnavailableEans`     |         | Comma-separated EANs always quoted as out of stock                                                                                                                                                                        |
+| `orderingPriceDriftPercent`   | 0       | Live order price drifts from the feed price by this percent                                                                                                                                                               |
+| `orderingPickupPointsEnabled` | 1       | Applies to both Acme and AcmeB: any value other than `1`/`true` disables pickup-point dropship support, so a dropship order naming a pickup point is rejected (`SupplierOrderRejectedException`) instead of being placed. |
 
 ### Tracking simulation
 

@@ -6,6 +6,7 @@ import pl.commercelink.inventory.supplier.api.SupplierOrderResult;
 import pl.commercelink.inventory.supplier.api.SupplierProvider;
 import pl.commercelink.inventory.supplier.api.SupplierPurchaseRequest;
 import pl.commercelink.inventory.supplier.api.SupplierQuote;
+import pl.commercelink.provider.api.ProviderField;
 
 import java.util.List;
 import java.util.Map;
@@ -58,5 +59,14 @@ class AcmeBSupplierDescriptorTest {
         // then
         assertEquals("ACME-PO-" + clientOrderRef, acmeOrder.externalOrderId());
         assertEquals("ACMEB-PO-" + clientOrderRef, acmeBOrder.externalOrderId());
+    }
+
+    @Test
+    void configurationFieldsIncludeThePickupPointsKnob() {
+        // given / when
+        List<ProviderField> fields = new AcmeBSupplierDescriptor().configurationFields();
+
+        // then
+        assertTrue(fields.stream().anyMatch(field -> field.key().equals("orderingPickupPointsEnabled")));
     }
 }

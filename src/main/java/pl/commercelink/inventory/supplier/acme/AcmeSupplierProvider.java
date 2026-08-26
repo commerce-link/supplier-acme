@@ -153,6 +153,9 @@ class AcmeSupplierProvider implements SupplierProvider {
             throw new SupplierOrderException(
                     "Missing consignee, refusing to place a " + supplier.name() + " dropship order");
         }
+        // The pickup point itself is deliberately not echoed anywhere below: the SPI tracking
+        // model (SupplierParcel) has no pickup notion, and the app re-derives the PickupPoint
+        // shipment from the order's own collectionPointCode instead.
         if (request.pickupPoint() != null && !supportsPickupPointDropship()) {
             throw new SupplierOrderRejectedException(supplier.name()
                     + " does not deliver dropship orders to carrier pickup points (requested "

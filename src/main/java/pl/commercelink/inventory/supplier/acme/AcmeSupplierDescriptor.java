@@ -38,7 +38,10 @@ public class AcmeSupplierDescriptor implements SupplierProviderDescriptor {
                         "domyślnie 2 — wcześniejsze sprawdzenia zwracają „w realizacji”"),
                 new ProviderField("trackingScenario", "Symulacja: scenariusz śledzenia",
                         ProviderField.FieldType.TEXT, false,
-                        "single (1 paczka, domyślnie) | parts (2 paczki w dwóch sprawdzeniach) | cancel (dostawca anulował) | nodata (wysłane bez danych przesyłki)"));
+                        "single (1 paczka, domyślnie) | parts (2 paczki w dwóch sprawdzeniach) | cancel (dostawca anulował) | nodata (wysłane bez danych przesyłki)"),
+                new ProviderField("orderingPickupPointsEnabled", "Symulacja: dostawa do punktu odbioru (1 = włączona)",
+                        ProviderField.FieldType.NUMBER, false,
+                        "0 = zamówienie dropship z punktem odbioru odrzucane (Rejected)"));
     }
 
     @Override

@@ -7,6 +7,7 @@ import pl.commercelink.inventory.supplier.api.SupplierOrderResult;
 import pl.commercelink.inventory.supplier.api.SupplierDeliveryAddress;
 import pl.commercelink.inventory.supplier.api.SupplierPurchaseRequest;
 import pl.commercelink.inventory.supplier.api.SupplierQuote;
+import pl.commercelink.provider.api.ProviderField;
 
 import java.util.List;
 import java.util.Map;
@@ -275,5 +276,14 @@ class AcmeSupplierProviderTest {
 
         // then
         assertEquals(0, quotes.getFirst().availableQuantity());
+    }
+
+    @Test
+    void configurationFieldsIncludeThePickupPointsKnob() {
+        // given / when
+        List<ProviderField> fields = new AcmeSupplierDescriptor().configurationFields();
+
+        // then
+        assertTrue(fields.stream().anyMatch(field -> field.key().equals("orderingPickupPointsEnabled")));
     }
 }

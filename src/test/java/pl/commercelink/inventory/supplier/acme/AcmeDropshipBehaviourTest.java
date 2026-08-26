@@ -5,6 +5,7 @@ import pl.commercelink.inventory.supplier.api.SupplierConsignee;
 import pl.commercelink.inventory.supplier.api.SupplierDropshipRequest;
 import pl.commercelink.inventory.supplier.api.SupplierOrderException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderLine;
+import pl.commercelink.inventory.supplier.api.SupplierOrderLookup;
 import pl.commercelink.inventory.supplier.api.SupplierOrderRejectedException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderResult;
 import pl.commercelink.inventory.supplier.api.SupplierPickupPoint;
@@ -109,12 +110,14 @@ class AcmeDropshipBehaviourTest {
     void pickupPointsCanBeDisabledByConfigurationAndThenRejectSuchOrders() {
         // given
         SupplierProvider acme = new AcmeSupplierDescriptor().create(Map.of("orderingPickupPointsEnabled", "0"));
+        String ref = UUID.randomUUID().toString();
 
         // when / then
         assertFalse(acme.supportsPickupPointDropship());
         assertTrue(acme.supportsDropshipping());
         assertThrows(SupplierOrderRejectedException.class, () -> acme.placeDropshipOrder(
-                new SupplierDropshipRequest(UUID.randomUUID().toString(), sampleLines(), CONSIGNEE, null, LOCKER)));
+                new SupplierDropshipRequest(ref, sampleLines(), CONSIGNEE, null, LOCKER)));
+        assertTrue(acme.trackOrder(new SupplierOrderLookup(null, ref)).isEmpty());
     }
 
     @Test
