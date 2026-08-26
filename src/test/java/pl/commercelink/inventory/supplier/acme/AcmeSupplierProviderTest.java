@@ -272,6 +272,44 @@ class AcmeSupplierProviderTest {
     }
 
     @Test
+    void findPlacedOrderFallsBackToDropshipOrder() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+        String ref = UUID.randomUUID().toString();
+        SupplierDropshipRequest dropshipRequest = new SupplierDropshipRequest(ref,
+                List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)), CONSIGNEE);
+
+        // when
+        SupplierOrderResult placed = provider.placeDropshipOrder(dropshipRequest);
+        Optional<SupplierOrderResult> found = provider.findPlacedOrder(purchase(
+                ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5))));
+
+        // then
+        assertTrue(found.isPresent());
+        assertEquals(placed.externalOrderId(), found.get().externalOrderId());
+    }
+
+    @Test
+    void findPlacedOrderPrefersRegularOrderOverDropshipWithSameRef() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+        String ref = UUID.randomUUID().toString();
+        List<SupplierOrderLine> lines = List.of(
+                new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5));
+        SupplierPurchaseRequest request = purchase(ref, lines);
+        SupplierDropshipRequest dropshipRequest = new SupplierDropshipRequest(ref, lines, CONSIGNEE);
+
+        // when
+        SupplierOrderResult placedRegular = provider.placeOrder(request);
+        provider.placeDropshipOrder(dropshipRequest);
+        Optional<SupplierOrderResult> found = provider.findPlacedOrder(request);
+
+        // then
+        assertTrue(found.isPresent());
+        assertEquals(placedRegular.externalOrderId(), found.get().externalOrderId());
+    }
+
+    @Test
     void quotesProductsBeyondTheOriginalSampleCatalog() {
         // given
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());

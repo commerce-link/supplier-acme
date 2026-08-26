@@ -180,7 +180,8 @@ class AcmeSupplierProvider implements SupplierProvider {
         if (clientOrderRef == null || clientOrderRef.isBlank()) {
             return Optional.empty();
         }
-        return Optional.ofNullable(PLACED_ORDERS.get(supplier.name() + "|" + clientOrderRef));
+        return Optional.ofNullable(PLACED_ORDERS.get(supplier.name() + "|" + clientOrderRef))
+                .or(() -> Optional.ofNullable(PLACED_ORDERS.get(supplier.name() + "|DS|" + clientOrderRef)));
     }
 
     private SupplierOrderResult placeWithScenario(String key, List<SupplierOrderLine> lines, String externalOrderId) {

@@ -105,22 +105,22 @@ class AcmeStateStoreTest {
     }
 
     @Test
-    void noneDisablesPersistence() throws IOException {
+    void noneDisablesPersistence(@org.junit.jupiter.api.io.TempDir Path tempDir) {
         // given
         originalStateFileProperty = System.getProperty("acme.state.file");
-        Path defaultFile = Path.of(System.getProperty("java.io.tmpdir"), "supplier-acme-state.json");
-        Files.deleteIfExists(defaultFile);
+        String originalTmpDirProperty = System.getProperty("java.io.tmpdir");
+        System.setProperty("java.io.tmpdir", tempDir.toString());
         System.setProperty("acme.state.file", "none");
-        AcmeStateStore store = AcmeStateStore.fromSystemProperty();
 
         try {
             // when
+            AcmeStateStore store = AcmeStateStore.fromSystemProperty();
             store.save(Map.of("k", sampleOrder()), Set.of("k"));
 
             // then
-            assertFalse(Files.exists(defaultFile));
+            assertFalse(Files.exists(tempDir.resolve("supplier-acme-state.json")));
         } finally {
-            Files.deleteIfExists(defaultFile);
+            System.setProperty("java.io.tmpdir", originalTmpDirProperty);
         }
     }
 
