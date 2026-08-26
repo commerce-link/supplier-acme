@@ -39,11 +39,38 @@ class AcmeSupplierProvider implements SupplierProvider {
             new SupplierDeliveryAddress("3", "al. Grunwaldzka 411", "Gdańsk", "80-309", "PL"),
             new SupplierDeliveryAddress("4", "ul. Krakowska 141", "Wrocław", "50-428", "PL"));
 
+    private static final Set<String> ATTEMPTED_REFS = ConcurrentHashMap.newKeySet();
+
+    private static final Map<String, Object> KEY_LOCKS = new ConcurrentHashMap<>();
+
+    // Not `final`: AcmeSupplierProviderTest#reloadStateForTests rebinds this to a fresh
+    // store pointed at whatever `acme.state.file` currently holds, to simulate a process
+    // restart within a single JVM (the field would otherwise stay pinned to the value
+    // read once at class-load time, before any test could change the system property).
+    private static AcmeStateStore STATE = AcmeStateStore.fromSystemProperty();
+
+    static {
+        STATE.load(PLACED_ORDERS, ATTEMPTED_REFS);
+    }
+
+    /**
+     * Test-only hook: clears the in-memory placed-order/attempted-ref state, rebinds
+     * {@link #STATE} to the current {@code acme.state.file} system property, and reloads
+     * from it — simulating an application restart.
+     */
+    static void reloadStateForTests() {
+        PLACED_ORDERS.clear();
+        ATTEMPTED_REFS.clear();
+        STATE = AcmeStateStore.fromSystemProperty();
+        STATE.load(PLACED_ORDERS, ATTEMPTED_REFS);
+    }
+
     private final Set<String> unavailableEans;
     private final double priceDriftFactor;
     private final SupplierInfo supplier;
     private final String feedResource;
     private final boolean supportsDropship;
+    private final Optional<AcmeScenario> scenarioOverride;
 
     AcmeSupplierProvider(Map<String, String> configuration) {
         this(configuration, AcmeSupplierDescriptor.SUPPLIER, "acme-products.csv", true);
@@ -68,6 +95,8 @@ class AcmeSupplierProvider implements SupplierProvider {
         double driftPercent = Double.parseDouble(
                 trimmedOrDefault(configuration, "orderingPriceDriftPercent", "0"));
         this.priceDriftFactor = 1 + driftPercent / 100;
+        this.scenarioOverride = AcmeScenario.fromOverride(
+                trimmedOrDefault(configuration, "orderingScenarioOverride", ""));
     }
 
     private static String trimmedOrDefault(Map<String, String> configuration, String key, String defaultValue) {
@@ -118,8 +147,8 @@ class AcmeSupplierProvider implements SupplierProvider {
             throw new SupplierOrderException(
                     "Unknown " + supplier.name() + " delivery address: " + request.deliveryAddressId());
         }
-        return PLACED_ORDERS.computeIfAbsent(supplier.name() + "|" + clientOrderRef,
-                key -> fulfil(request.lines(), orderIdPrefix() + clientOrderRef));
+        return placeWithScenario(supplier.name() + "|" + clientOrderRef, request.lines(),
+                orderIdPrefix() + clientOrderRef);
     }
 
     @Override
@@ -141,8 +170,8 @@ class AcmeSupplierProvider implements SupplierProvider {
             throw new SupplierOrderException(
                     "Missing consignee, refusing to place a " + supplier.name() + " dropship order");
         }
-        return PLACED_ORDERS.computeIfAbsent(supplier.name() + "|DS|" + clientOrderRef,
-                key -> fulfil(request.lines(), dropshipOrderIdPrefix() + clientOrderRef));
+        return placeWithScenario(supplier.name() + "|DS|" + clientOrderRef, request.lines(),
+                dropshipOrderIdPrefix() + clientOrderRef);
     }
 
     @Override
@@ -151,7 +180,49 @@ class AcmeSupplierProvider implements SupplierProvider {
         if (clientOrderRef == null || clientOrderRef.isBlank()) {
             return Optional.empty();
         }
-        return Optional.ofNullable(PLACED_ORDERS.get(supplier.name() + "|" + clientOrderRef));
+        return Optional.ofNullable(PLACED_ORDERS.get(supplier.name() + "|" + clientOrderRef))
+                .or(() -> Optional.ofNullable(PLACED_ORDERS.get(supplier.name() + "|DS|" + clientOrderRef)));
+    }
+
+    private SupplierOrderResult placeWithScenario(String key, List<SupplierOrderLine> lines, String externalOrderId) {
+        synchronized (KEY_LOCKS.computeIfAbsent(key, k -> new Object())) {
+            SupplierOrderResult existing = PLACED_ORDERS.get(key);
+            if (existing != null) {
+                return existing;
+            }
+            boolean firstAttempt = ATTEMPTED_REFS.add(key);
+            if (firstAttempt) {
+                STATE.save(PLACED_ORDERS, ATTEMPTED_REFS);
+            }
+            AcmeScenario scenario = scenarioOverride
+                    .or(() -> lines.stream().map(SupplierOrderLine::mfn).map(AcmeScenario::fromMfn)
+                            .flatMap(Optional::stream).findFirst())
+                    .orElse(AcmeScenario.OK);
+            switch (scenario) {
+                case REJECTED -> throw new SupplierOrderRejectedException(
+                        supplier.name() + ": simulated rejection, insufficient stock");
+                case UNKNOWN_LOST -> {
+                    if (firstAttempt) {
+                        throw new SupplierOrderOutcomeUnknownException(
+                                supplier.name() + ": simulated HTTP 502 before the order was registered");
+                    }
+                }
+                case BLANK_ID -> {
+                    if (firstAttempt) {
+                        return new SupplierOrderResult("", 0, "PLN", List.of());
+                    }
+                }
+                default -> { }
+            }
+            SupplierOrderResult placed = fulfil(lines, externalOrderId);
+            PLACED_ORDERS.put(key, placed);
+            STATE.save(PLACED_ORDERS, ATTEMPTED_REFS);
+            if (scenario == AcmeScenario.UNKNOWN_PLACED && firstAttempt) {
+                throw new SupplierOrderOutcomeUnknownException(
+                        supplier.name() + ": simulated timeout after the order was accepted");
+            }
+            return placed;
+        }
     }
 
     private SupplierOrderResult fulfil(List<SupplierOrderLine> lines, String externalOrderId) {

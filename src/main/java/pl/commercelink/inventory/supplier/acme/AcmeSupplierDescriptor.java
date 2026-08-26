@@ -32,7 +32,10 @@ public class AcmeSupplierDescriptor implements SupplierProviderDescriptor {
                         "np. 5900000000001,5900000000003 — po przecinku, zawsze kwotowane jako brak"),
                 new ProviderField("orderingPriceDriftPercent", "Symulacja: odchylenie ceny live od feedu (%)",
                         ProviderField.FieldType.NUMBER, false,
-                        "np. 5 = ceny przy zamówieniu o 5% wyższe niż w feedzie"));
+                        "np. 5 = ceny przy zamówieniu o 5% wyższe niż w feedzie"),
+                new ProviderField("orderingScenarioOverride", "Symulacja: wymuś scenariusz zakupu",
+                        ProviderField.FieldType.TEXT, false,
+                        "puste = wg produktu SIM-*; OK | UNKNOWN_PLACED | UNKNOWN_LOST | REJECTED | BLANK_ID — dotyczy każdego zakupu w sklepie"));
     }
 
     @Override

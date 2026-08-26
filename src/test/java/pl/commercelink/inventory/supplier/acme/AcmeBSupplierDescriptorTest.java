@@ -6,6 +6,7 @@ import pl.commercelink.inventory.supplier.api.SupplierOrderResult;
 import pl.commercelink.inventory.supplier.api.SupplierProvider;
 import pl.commercelink.inventory.supplier.api.SupplierPurchaseRequest;
 import pl.commercelink.inventory.supplier.api.SupplierQuote;
+import pl.commercelink.provider.api.ProviderField;
 
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,15 @@ class AcmeBSupplierDescriptorTest {
 
     private static final List<SupplierOrderLine> SAMPLE_LINES =
             List.of(new SupplierOrderLine("ACME-5900000000002", "5900000000002", "MFN-VALUE-01", 1));
+
+    @Test
+    void configurationFieldsIncludeTheScenarioOverride() {
+        // given / when
+        List<ProviderField> fields = new AcmeBSupplierDescriptor().configurationFields();
+
+        // then
+        assertTrue(fields.stream().anyMatch(field -> "orderingScenarioOverride".equals(field.key())));
+    }
 
     @Test
     void createdProviderSupportsOrdering() {
