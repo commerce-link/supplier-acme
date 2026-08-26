@@ -39,11 +39,14 @@ class AcmeSupplierProvider implements SupplierProvider {
             new SupplierDeliveryAddress("3", "al. Grunwaldzka 411", "Gdańsk", "80-309", "PL"),
             new SupplierDeliveryAddress("4", "ul. Krakowska 141", "Wrocław", "50-428", "PL"));
 
+    private static final Set<String> ATTEMPTED_REFS = ConcurrentHashMap.newKeySet();
+
     private final Set<String> unavailableEans;
     private final double priceDriftFactor;
     private final SupplierInfo supplier;
     private final String feedResource;
     private final boolean supportsDropship;
+    private final Optional<AcmeScenario> scenarioOverride;
 
     AcmeSupplierProvider(Map<String, String> configuration) {
         this(configuration, AcmeSupplierDescriptor.SUPPLIER, "acme-products.csv", true);
@@ -68,6 +71,8 @@ class AcmeSupplierProvider implements SupplierProvider {
         double driftPercent = Double.parseDouble(
                 trimmedOrDefault(configuration, "orderingPriceDriftPercent", "0"));
         this.priceDriftFactor = 1 + driftPercent / 100;
+        this.scenarioOverride = AcmeScenario.fromOverride(
+                trimmedOrDefault(configuration, "orderingScenarioOverride", ""));
     }
 
     private static String trimmedOrDefault(Map<String, String> configuration, String key, String defaultValue) {
@@ -118,8 +123,8 @@ class AcmeSupplierProvider implements SupplierProvider {
             throw new SupplierOrderException(
                     "Unknown " + supplier.name() + " delivery address: " + request.deliveryAddressId());
         }
-        return PLACED_ORDERS.computeIfAbsent(supplier.name() + "|" + clientOrderRef,
-                key -> fulfil(request.lines(), orderIdPrefix() + clientOrderRef));
+        return placeWithScenario(supplier.name() + "|" + clientOrderRef, request.lines(),
+                orderIdPrefix() + clientOrderRef);
     }
 
     @Override
@@ -141,8 +146,8 @@ class AcmeSupplierProvider implements SupplierProvider {
             throw new SupplierOrderException(
                     "Missing consignee, refusing to place a " + supplier.name() + " dropship order");
         }
-        return PLACED_ORDERS.computeIfAbsent(supplier.name() + "|DS|" + clientOrderRef,
-                key -> fulfil(request.lines(), dropshipOrderIdPrefix() + clientOrderRef));
+        return placeWithScenario(supplier.name() + "|DS|" + clientOrderRef, request.lines(),
+                dropshipOrderIdPrefix() + clientOrderRef);
     }
 
     @Override
@@ -152,6 +157,41 @@ class AcmeSupplierProvider implements SupplierProvider {
             return Optional.empty();
         }
         return Optional.ofNullable(PLACED_ORDERS.get(supplier.name() + "|" + clientOrderRef));
+    }
+
+    private SupplierOrderResult placeWithScenario(String key, List<SupplierOrderLine> lines, String externalOrderId) {
+        SupplierOrderResult existing = PLACED_ORDERS.get(key);
+        if (existing != null) {
+            return existing;
+        }
+        boolean firstAttempt = ATTEMPTED_REFS.add(key);
+        AcmeScenario scenario = scenarioOverride
+                .or(() -> lines.stream().map(SupplierOrderLine::mfn).map(AcmeScenario::fromMfn)
+                        .flatMap(Optional::stream).findFirst())
+                .orElse(AcmeScenario.OK);
+        switch (scenario) {
+            case REJECTED -> throw new SupplierOrderRejectedException(
+                    supplier.name() + ": simulated rejection, insufficient stock");
+            case UNKNOWN_LOST -> {
+                if (firstAttempt) {
+                    throw new SupplierOrderOutcomeUnknownException(
+                            supplier.name() + ": simulated HTTP 502 before the order was registered");
+                }
+            }
+            case BLANK_ID -> {
+                if (firstAttempt) {
+                    return new SupplierOrderResult("", 0, "PLN", List.of());
+                }
+            }
+            default -> { }
+        }
+        SupplierOrderResult placed = fulfil(lines, externalOrderId);
+        PLACED_ORDERS.put(key, placed);
+        if (scenario == AcmeScenario.UNKNOWN_PLACED && firstAttempt) {
+            throw new SupplierOrderOutcomeUnknownException(
+                    supplier.name() + ": simulated timeout after the order was accepted");
+        }
+        return placed;
     }
 
     private SupplierOrderResult fulfil(List<SupplierOrderLine> lines, String externalOrderId) {

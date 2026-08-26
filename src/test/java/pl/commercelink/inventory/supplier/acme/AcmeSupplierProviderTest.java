@@ -1,8 +1,12 @@
 package pl.commercelink.inventory.supplier.acme;
 
 import org.junit.jupiter.api.Test;
+import pl.commercelink.inventory.supplier.api.SupplierConsignee;
+import pl.commercelink.inventory.supplier.api.SupplierDropshipRequest;
 import pl.commercelink.inventory.supplier.api.SupplierOrderException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderLine;
+import pl.commercelink.inventory.supplier.api.SupplierOrderOutcomeUnknownException;
+import pl.commercelink.inventory.supplier.api.SupplierOrderRejectedException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderResult;
 import pl.commercelink.inventory.supplier.api.SupplierDeliveryAddress;
 import pl.commercelink.inventory.supplier.api.SupplierPurchaseRequest;
@@ -275,5 +279,147 @@ class AcmeSupplierProviderTest {
 
         // then
         assertEquals(0, quotes.getFirst().availableQuantity());
+    }
+
+    private static SupplierOrderLine simLine(String ean, String mfn) {
+        return new SupplierOrderLine("ACME-" + ean, ean, mfn, 1);
+    }
+
+    private static final SupplierConsignee CONSIGNEE = new SupplierConsignee(null, "Jan", "Kowalski",
+            "ul. Polna 1", "00-001", "Warszawa", "PL", "+48601234567", "jan.kowalski@example.com");
+
+    @Test
+    void unknownPlacedStoresOrderThenThrowsOutcomeUnknown() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+        String ref = UUID.randomUUID().toString();
+        SupplierPurchaseRequest request = purchase(ref,
+                List.of(simLine("5900000000902", "SIM-UNKNOWN-PLACED")));
+
+        // when / then
+        SupplierOrderOutcomeUnknownException ex = assertThrows(SupplierOrderOutcomeUnknownException.class,
+                () -> provider.placeOrder(request));
+        assertEquals("Acme: simulated timeout after the order was accepted", ex.getMessage());
+
+        Optional<SupplierOrderResult> found = provider.findPlacedOrder(request);
+        assertTrue(found.isPresent());
+        assertEquals("ACME-PO-" + ref, found.get().externalOrderId());
+
+        SupplierOrderResult replay = provider.placeOrder(request);
+        assertEquals(found.get().externalOrderId(), replay.externalOrderId());
+        assertEquals(found.get().totalNet(), replay.totalNet());
+    }
+
+    @Test
+    void unknownLostThrowsFirstThenPlacesOnRetry() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+        String ref = UUID.randomUUID().toString();
+        SupplierPurchaseRequest request = purchase(ref,
+                List.of(simLine("5900000000903", "SIM-UNKNOWN-LOST")));
+
+        // when / then
+        SupplierOrderOutcomeUnknownException ex = assertThrows(SupplierOrderOutcomeUnknownException.class,
+                () -> provider.placeOrder(request));
+        assertEquals("Acme: simulated HTTP 502 before the order was registered", ex.getMessage());
+        assertFalse(provider.findPlacedOrder(request).isPresent());
+
+        SupplierOrderResult result = provider.placeOrder(request);
+        assertEquals("ACME-PO-" + ref, result.externalOrderId());
+    }
+
+    @Test
+    void rejectedThrowsRejectedException() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+        String ref = UUID.randomUUID().toString();
+        SupplierPurchaseRequest request = purchase(ref,
+                List.of(simLine("5900000000904", "SIM-REJECTED")));
+
+        // when / then
+        SupplierOrderRejectedException ex = assertThrows(SupplierOrderRejectedException.class,
+                () -> provider.placeOrder(request));
+        assertEquals("Acme: simulated rejection, insufficient stock", ex.getMessage());
+        assertFalse(provider.findPlacedOrder(request).isPresent());
+
+        assertThrows(SupplierOrderRejectedException.class, () -> provider.placeOrder(request));
+        assertFalse(provider.findPlacedOrder(request).isPresent());
+    }
+
+    @Test
+    void blankIdReturnsBlankExternalOrderIdFirstThenPlacesOnRetry() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+        String ref = UUID.randomUUID().toString();
+        SupplierPurchaseRequest request = purchase(ref,
+                List.of(simLine("5900000000905", "SIM-BLANK-ID")));
+
+        // when / then
+        SupplierOrderResult first = provider.placeOrder(request);
+        assertEquals("", first.externalOrderId());
+        assertFalse(provider.findPlacedOrder(request).isPresent());
+
+        SupplierOrderResult second = provider.placeOrder(request);
+        assertEquals("ACME-PO-" + ref, second.externalOrderId());
+    }
+
+    @Test
+    void simOkBehavesNormally() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+        String ref = UUID.randomUUID().toString();
+
+        // when
+        SupplierOrderResult result = provider.placeOrder(purchase(ref,
+                List.of(simLine("5900000000901", "SIM-OK"))));
+
+        // then
+        assertEquals("ACME-PO-" + ref, result.externalOrderId());
+        assertEquals(10.00, result.totalNet(), 0.01);
+    }
+
+    @Test
+    void overrideWinsOverSku() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(
+                Map.of("orderingScenarioOverride", "REJECTED"));
+        String ref = UUID.randomUUID().toString();
+        SupplierPurchaseRequest request = purchase(ref,
+                List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 1)));
+
+        // when / then
+        assertThrows(SupplierOrderRejectedException.class, () -> provider.placeOrder(request));
+    }
+
+    @Test
+    void firstSimLineDecidesWhenSeveralPresent() {
+        // given
+        AcmeSupplierProvider providerRejected = new AcmeSupplierProvider(Map.of());
+        String refRejected = UUID.randomUUID().toString();
+
+        // when / then
+        assertThrows(SupplierOrderRejectedException.class, () -> providerRejected.placeOrder(purchase(refRejected,
+                List.of(simLine("5900000000904", "SIM-REJECTED"), simLine("5900000000901", "SIM-OK")))));
+
+        AcmeSupplierProvider providerOk = new AcmeSupplierProvider(Map.of());
+        String refOk = UUID.randomUUID().toString();
+        SupplierOrderResult result = providerOk.placeOrder(purchase(refOk,
+                List.of(simLine("5900000000901", "SIM-OK"), simLine("5900000000904", "SIM-REJECTED"))));
+        assertEquals("ACME-PO-" + refOk, result.externalOrderId());
+    }
+
+    @Test
+    void dropshipHonoursScenarios() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+        String ref = UUID.randomUUID().toString();
+        SupplierDropshipRequest request = new SupplierDropshipRequest(ref,
+                List.of(simLine("5900000000902", "SIM-UNKNOWN-PLACED")), CONSIGNEE);
+
+        // when / then
+        assertThrows(SupplierOrderOutcomeUnknownException.class, () -> provider.placeDropshipOrder(request));
+
+        SupplierOrderResult replay = provider.placeDropshipOrder(request);
+        assertEquals("ACME-DS-" + ref, replay.externalOrderId());
     }
 }
