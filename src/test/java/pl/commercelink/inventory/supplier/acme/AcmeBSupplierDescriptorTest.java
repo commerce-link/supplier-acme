@@ -21,6 +21,15 @@ class AcmeBSupplierDescriptorTest {
             List.of(new SupplierOrderLine("ACME-5900000000002", "5900000000002", "MFN-VALUE-01", 1));
 
     @Test
+    void configurationFieldsIncludeTheScenarioOverride() {
+        // given / when
+        List<ProviderField> fields = new AcmeBSupplierDescriptor().configurationFields();
+
+        // then
+        assertTrue(fields.stream().anyMatch(field -> "orderingScenarioOverride".equals(field.key())));
+    }
+
+    @Test
     void createdProviderSupportsOrdering() {
         // given
         SupplierProvider provider = new AcmeBSupplierDescriptor().create(Map.of());

@@ -46,7 +46,10 @@ public class AcmeBSupplierDescriptor implements SupplierProviderDescriptor {
                         "single (1 paczka, domyślnie) | parts (2 paczki w dwóch sprawdzeniach) | cancel (dostawca anulował) | nodata (wysłane bez danych przesyłki)"),
                 new ProviderField("orderingPickupPointsEnabled", "Symulacja: dostawa do punktu odbioru (1 = włączona)",
                         ProviderField.FieldType.NUMBER, false,
-                        "0 = zamówienie dropship z punktem odbioru odrzucane (Rejected)"));
+                        "0 = zamówienie dropship z punktem odbioru odrzucane (Rejected)"),
+                new ProviderField("orderingScenarioOverride", "Symulacja: wymuś scenariusz zakupu",
+                        ProviderField.FieldType.TEXT, false,
+                        "puste = wg produktu SIM-*; OK | UNKNOWN_PLACED | UNKNOWN_LOST | REJECTED | BLANK_ID — dotyczy każdego zakupu w sklepie"));
     }
 
     @Override
