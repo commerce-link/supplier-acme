@@ -1,5 +1,6 @@
 package pl.commercelink.inventory.supplier.acme;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import pl.commercelink.inventory.supplier.api.SupplierConsignee;
 import pl.commercelink.inventory.supplier.api.SupplierDropshipRequest;
@@ -12,17 +13,33 @@ import pl.commercelink.inventory.supplier.api.SupplierDeliveryAddress;
 import pl.commercelink.inventory.supplier.api.SupplierPurchaseRequest;
 import pl.commercelink.inventory.supplier.api.SupplierQuote;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 class AcmeSupplierProviderTest {
+
+    @AfterEach
+    void resetAcmeStateFile() {
+        System.setProperty("acme.state.file", "none");
+        AcmeSupplierProvider.reloadStateForTests();
+    }
 
     private static SupplierPurchaseRequest purchase(String clientOrderRef, List<SupplierOrderLine> lines) {
         return new SupplierPurchaseRequest(clientOrderRef, lines, "2");
@@ -421,5 +438,70 @@ class AcmeSupplierProviderTest {
 
         SupplierOrderResult replay = provider.placeDropshipOrder(request);
         assertEquals("ACME-DS-" + ref, replay.externalOrderId());
+    }
+
+    @Test
+    void restoresPlacedOrdersAfterSimulatedRestart() throws IOException {
+        // given
+        Path tempFile = Files.createTempFile("acme-state-test", ".json");
+        Files.deleteIfExists(tempFile);
+        System.setProperty("acme.state.file", tempFile.toString());
+        AcmeSupplierProvider.reloadStateForTests();
+        try {
+            AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+            String ref = UUID.randomUUID().toString();
+            SupplierPurchaseRequest request = purchase(
+                    ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)));
+            SupplierOrderResult placed = provider.placeOrder(request);
+
+            // when: simulate a restart by clearing the in-memory state and reloading from disk
+            AcmeSupplierProvider.reloadStateForTests();
+            Optional<SupplierOrderResult> found = provider.findPlacedOrder(request);
+
+            // then
+            assertTrue(found.isPresent());
+            assertEquals(placed.externalOrderId(), found.get().externalOrderId());
+            assertEquals(placed.totalNet(), found.get().totalNet());
+            assertEquals(placed.currency(), found.get().currency());
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
+    }
+
+    @Test
+    void concurrentFirstAttemptsForSameKeyFulfilExactlyOnce() throws Exception {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+        String ref = UUID.randomUUID().toString();
+        SupplierPurchaseRequest request = purchase(ref, List.of(simLine("5900000000901", "SIM-OK")));
+
+        int threadCount = 2;
+        CountDownLatch ready = new CountDownLatch(threadCount);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(threadCount);
+        try {
+            List<Future<SupplierOrderResult>> futures = IntStream.range(0, threadCount)
+                    .mapToObj(i -> pool.submit(() -> {
+                        ready.countDown();
+                        start.await();
+                        return provider.placeOrder(request);
+                    }))
+                    .toList();
+
+            // when
+            ready.await();
+            start.countDown();
+            List<SupplierOrderResult> results = new ArrayList<>();
+            for (Future<SupplierOrderResult> future : futures) {
+                results.add(future.get());
+            }
+
+            // then: both callers observe the exact same stored result instance, proving
+            // fulfil() ran exactly once for the two concurrent first attempts.
+            assertSame(results.get(0), results.get(1));
+            assertEquals("ACME-PO-" + ref, results.get(0).externalOrderId());
+        } finally {
+            pool.shutdownNow();
+        }
     }
 }

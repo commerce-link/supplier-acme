@@ -41,6 +41,30 @@ class AcmeSupplierProvider implements SupplierProvider {
 
     private static final Set<String> ATTEMPTED_REFS = ConcurrentHashMap.newKeySet();
 
+    private static final Map<String, Object> KEY_LOCKS = new ConcurrentHashMap<>();
+
+    // Not `final`: AcmeSupplierProviderTest#reloadStateForTests rebinds this to a fresh
+    // store pointed at whatever `acme.state.file` currently holds, to simulate a process
+    // restart within a single JVM (the field would otherwise stay pinned to the value
+    // read once at class-load time, before any test could change the system property).
+    private static AcmeStateStore STATE = AcmeStateStore.fromSystemProperty();
+
+    static {
+        STATE.load(PLACED_ORDERS, ATTEMPTED_REFS);
+    }
+
+    /**
+     * Test-only hook: clears the in-memory placed-order/attempted-ref state, rebinds
+     * {@link #STATE} to the current {@code acme.state.file} system property, and reloads
+     * from it — simulating an application restart.
+     */
+    static void reloadStateForTests() {
+        PLACED_ORDERS.clear();
+        ATTEMPTED_REFS.clear();
+        STATE = AcmeStateStore.fromSystemProperty();
+        STATE.load(PLACED_ORDERS, ATTEMPTED_REFS);
+    }
+
     private final Set<String> unavailableEans;
     private final double priceDriftFactor;
     private final SupplierInfo supplier;
@@ -160,38 +184,44 @@ class AcmeSupplierProvider implements SupplierProvider {
     }
 
     private SupplierOrderResult placeWithScenario(String key, List<SupplierOrderLine> lines, String externalOrderId) {
-        SupplierOrderResult existing = PLACED_ORDERS.get(key);
-        if (existing != null) {
-            return existing;
-        }
-        boolean firstAttempt = ATTEMPTED_REFS.add(key);
-        AcmeScenario scenario = scenarioOverride
-                .or(() -> lines.stream().map(SupplierOrderLine::mfn).map(AcmeScenario::fromMfn)
-                        .flatMap(Optional::stream).findFirst())
-                .orElse(AcmeScenario.OK);
-        switch (scenario) {
-            case REJECTED -> throw new SupplierOrderRejectedException(
-                    supplier.name() + ": simulated rejection, insufficient stock");
-            case UNKNOWN_LOST -> {
-                if (firstAttempt) {
-                    throw new SupplierOrderOutcomeUnknownException(
-                            supplier.name() + ": simulated HTTP 502 before the order was registered");
-                }
+        synchronized (KEY_LOCKS.computeIfAbsent(key, k -> new Object())) {
+            SupplierOrderResult existing = PLACED_ORDERS.get(key);
+            if (existing != null) {
+                return existing;
             }
-            case BLANK_ID -> {
-                if (firstAttempt) {
-                    return new SupplierOrderResult("", 0, "PLN", List.of());
-                }
+            boolean firstAttempt = ATTEMPTED_REFS.add(key);
+            if (firstAttempt) {
+                STATE.save(PLACED_ORDERS, ATTEMPTED_REFS);
             }
-            default -> { }
+            AcmeScenario scenario = scenarioOverride
+                    .or(() -> lines.stream().map(SupplierOrderLine::mfn).map(AcmeScenario::fromMfn)
+                            .flatMap(Optional::stream).findFirst())
+                    .orElse(AcmeScenario.OK);
+            switch (scenario) {
+                case REJECTED -> throw new SupplierOrderRejectedException(
+                        supplier.name() + ": simulated rejection, insufficient stock");
+                case UNKNOWN_LOST -> {
+                    if (firstAttempt) {
+                        throw new SupplierOrderOutcomeUnknownException(
+                                supplier.name() + ": simulated HTTP 502 before the order was registered");
+                    }
+                }
+                case BLANK_ID -> {
+                    if (firstAttempt) {
+                        return new SupplierOrderResult("", 0, "PLN", List.of());
+                    }
+                }
+                default -> { }
+            }
+            SupplierOrderResult placed = fulfil(lines, externalOrderId);
+            PLACED_ORDERS.put(key, placed);
+            STATE.save(PLACED_ORDERS, ATTEMPTED_REFS);
+            if (scenario == AcmeScenario.UNKNOWN_PLACED && firstAttempt) {
+                throw new SupplierOrderOutcomeUnknownException(
+                        supplier.name() + ": simulated timeout after the order was accepted");
+            }
+            return placed;
         }
-        SupplierOrderResult placed = fulfil(lines, externalOrderId);
-        PLACED_ORDERS.put(key, placed);
-        if (scenario == AcmeScenario.UNKNOWN_PLACED && firstAttempt) {
-            throw new SupplierOrderOutcomeUnknownException(
-                    supplier.name() + ": simulated timeout after the order was accepted");
-        }
-        return placed;
     }
 
     private SupplierOrderResult fulfil(List<SupplierOrderLine> lines, String externalOrderId) {
