@@ -7,6 +7,9 @@ import pl.commercelink.inventory.supplier.api.SupplierInfo;
 import pl.commercelink.inventory.supplier.api.SupplierOrderException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderLine;
 import pl.commercelink.inventory.supplier.api.SupplierOrderLookup;
+import pl.commercelink.inventory.supplier.api.SupplierOrderOption;
+import pl.commercelink.inventory.supplier.api.SupplierOrderOptionChoice;
+import pl.commercelink.inventory.supplier.api.SupplierOrderOptionsContext;
 import pl.commercelink.inventory.supplier.api.SupplierOrderOutcomeUnknownException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderRejectedException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderResult;
@@ -33,6 +36,12 @@ import java.util.stream.IntStream;
 import static pl.commercelink.taxonomy.UnifiedProductIdentifiers.unifyEan;
 
 class AcmeSupplierProvider implements SupplierProvider {
+
+    static final String SHIPPING_SERVICE_OPTION = "shippingService";
+
+    private static final List<SupplierOrderOptionChoice> SHIPPING_SERVICES = List.of(
+            new SupplierOrderOptionChoice("standard", "Standard", "2-3 dni robocze"),
+            new SupplierOrderOptionChoice("express", "Express", "następny dzień roboczy"));
 
     private static final Map<String, SupplierOrderResult> PLACED_ORDERS = new ConcurrentHashMap<>();
 
@@ -77,21 +86,23 @@ class AcmeSupplierProvider implements SupplierProvider {
     private final String feedResource;
     private final boolean supportsDropship;
     private final boolean pickupPoints;
+    private final boolean declaresOrderOptions;
     private final AcmeTrackingSimulation tracking;
     private final Optional<AcmeScenario> scenarioOverride;
 
     AcmeSupplierProvider(Map<String, String> configuration) {
-        this(configuration, AcmeSupplierDescriptor.SUPPLIER, "acme-products.csv", true);
+        this(configuration, AcmeSupplierDescriptor.SUPPLIER, "acme-products.csv", true, true);
     }
 
     AcmeSupplierProvider(Map<String, String> configuration, SupplierInfo supplier, String feedResource) {
-        this(configuration, supplier, feedResource, false);
+        this(configuration, supplier, feedResource, false, false);
     }
 
     AcmeSupplierProvider(Map<String, String> configuration, SupplierInfo supplier, String feedResource,
-                         boolean supportsDropshipByDefault) {
+                         boolean supportsDropshipByDefault, boolean declaresOrderOptions) {
         this.supplier = supplier;
         this.feedResource = feedResource;
+        this.declaresOrderOptions = declaresOrderOptions;
         String dropshipKnob = trimmedOrDefault(configuration, "orderingDropshipEnabled",
                 supportsDropshipByDefault ? "1" : "0");
         this.supportsDropship = "1".equals(dropshipKnob) || "true".equalsIgnoreCase(dropshipKnob);
@@ -140,6 +151,25 @@ class AcmeSupplierProvider implements SupplierProvider {
     }
 
     @Override
+    public List<SupplierOrderOption> orderOptions(SupplierOrderOptionsContext context) {
+        return declaresOrderOptions
+                ? List.of(new SupplierOrderOption(SHIPPING_SERVICE_OPTION, "Usługa wysyłki", SHIPPING_SERVICES,
+                        "standard", true))
+                : List.of();
+    }
+
+    private void requireShippingService(Map<String, String> options) {
+        if (!declaresOrderOptions) {
+            return;
+        }
+        String chosen = options.get(SHIPPING_SERVICE_OPTION);
+        if (chosen == null || SHIPPING_SERVICES.stream().noneMatch(choice -> choice.value().equals(chosen))) {
+            throw new SupplierOrderRejectedException(supplier.name()
+                    + " needs a shipping service: standard or express (got " + chosen + ")");
+        }
+    }
+
+    @Override
     public List<SupplierQuote> checkAvailability(List<SupplierOrderLine> lines) {
         Map<String, String[]> feedBySku = feedRowsBySku();
         return lines.stream()
@@ -158,6 +188,7 @@ class AcmeSupplierProvider implements SupplierProvider {
             throw new SupplierOrderException(
                     "Unknown " + supplier.name() + " delivery address: " + request.deliveryAddressId());
         }
+        requireShippingService(request.options());
         return placeWithScenario(supplier.name() + "|" + clientOrderRef, request.lines(),
                 orderIdPrefix() + clientOrderRef);
     }
@@ -186,6 +217,7 @@ class AcmeSupplierProvider implements SupplierProvider {
             throw new SupplierOrderException(
                     "Missing consignee, refusing to place a " + supplier.name() + " dropship order");
         }
+        requireShippingService(request.options());
         // The pickup point is never echoed back through order tracking: the SPI tracking model
         // (SupplierParcel) has no pickup notion, and the app re-derives the PickupPoint shipment
         // from the order's own collectionPointCode instead. It is still remembered below, purely

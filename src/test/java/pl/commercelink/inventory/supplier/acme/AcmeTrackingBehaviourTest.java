@@ -26,6 +26,10 @@ class AcmeTrackingBehaviourTest {
     private static final SupplierConsignee CONSIGNEE = new SupplierConsignee(null, "Jan", "Kowalski",
             "ul. Polna 1", "00-001", "Warszawa", "PL", "+48601234567", "jan.kowalski@example.com");
 
+    // Acme requires a shipping service; this is the default valid choice for tests unrelated to that option.
+    private static final Map<String, String> ACME_OPTIONS =
+            Map.of(AcmeSupplierProvider.SHIPPING_SERVICE_OPTION, "standard");
+
     private static List<SupplierOrderLine> twoLines() {
         return List.of(
                 new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 1),
@@ -52,7 +56,8 @@ class AcmeTrackingBehaviourTest {
         // given
         SupplierProvider acme = acme("trackingShipAfterChecks", "1");
         String ref = UUID.randomUUID().toString();
-        SupplierOrderResult placed = acme.placeDropshipOrder(new SupplierDropshipRequest(ref, twoLines(), CONSIGNEE));
+        SupplierOrderResult placed = acme.placeDropshipOrder(
+                new SupplierDropshipRequest(ref, twoLines(), CONSIGNEE, null, null, ACME_OPTIONS));
 
         // when
         Optional<SupplierOrderTracking> tracking = acme.trackOrder(new SupplierOrderLookup(placed.externalOrderId(), null));
@@ -68,7 +73,7 @@ class AcmeTrackingBehaviourTest {
         // given
         SupplierProvider acme = acme("trackingShipAfterChecks", "1");
         String ref = UUID.randomUUID().toString();
-        acme.placeDropshipOrder(new SupplierDropshipRequest(ref, twoLines(), CONSIGNEE));
+        acme.placeDropshipOrder(new SupplierDropshipRequest(ref, twoLines(), CONSIGNEE, null, null, ACME_OPTIONS));
 
         // when
         Optional<SupplierOrderTracking> tracking = acme.trackOrder(new SupplierOrderLookup("MANUAL-123", ref));
@@ -82,7 +87,8 @@ class AcmeTrackingBehaviourTest {
         // given
         SupplierProvider acme = acme("trackingShipAfterChecks", "1");
         String ref = UUID.randomUUID().toString();
-        SupplierOrderResult placed = acme.placeOrder(new SupplierPurchaseRequest(ref, twoLines(), "1"));
+        SupplierOrderResult placed = acme.placeOrder(
+                new SupplierPurchaseRequest(ref, twoLines(), "1", ACME_OPTIONS));
 
         // when
         Optional<SupplierOrderTracking> tracking = acme.trackOrder(new SupplierOrderLookup(placed.externalOrderId(), null));
@@ -104,7 +110,8 @@ class AcmeTrackingBehaviourTest {
         String ref = UUID.randomUUID().toString();
         SupplierProvider slow = acme("trackingShipAfterChecks", "3");
         SupplierProvider fast = acme("trackingShipAfterChecks", "1");
-        SupplierOrderResult placed = slow.placeDropshipOrder(new SupplierDropshipRequest(ref, twoLines(), CONSIGNEE));
+        SupplierOrderResult placed = slow.placeDropshipOrder(
+                new SupplierDropshipRequest(ref, twoLines(), CONSIGNEE, null, null, ACME_OPTIONS));
         SupplierOrderLookup lookup = new SupplierOrderLookup(placed.externalOrderId(), ref);
 
         // when

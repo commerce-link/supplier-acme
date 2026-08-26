@@ -32,6 +32,10 @@ class AcmeDropshipBehaviourTest {
 
     private static final SupplierPickupPoint LOCKER = new SupplierPickupPoint("InPost", "WAW04A", null, null, null, null);
 
+    // Acme requires a shipping service; this is the default valid choice for tests unrelated to that option.
+    private static final Map<String, String> ACME_OPTIONS =
+            Map.of(AcmeSupplierProvider.SHIPPING_SERVICE_OPTION, "standard");
+
     private static List<SupplierOrderLine> sampleLines() {
         return List.of(new SupplierOrderLine("ACME-" + SAMPLE_EAN, SAMPLE_EAN, "MFN-CLEAR-01", 1));
     }
@@ -61,9 +65,9 @@ class AcmeDropshipBehaviourTest {
 
         // when
         SupplierOrderResult regular = acme.placeOrder(
-                new SupplierPurchaseRequest(ref, sampleLines(), "1"));
+                new SupplierPurchaseRequest(ref, sampleLines(), "1", ACME_OPTIONS));
         SupplierOrderResult dropship = acme.placeDropshipOrder(
-                new SupplierDropshipRequest(ref, sampleLines(), CONSIGNEE));
+                new SupplierDropshipRequest(ref, sampleLines(), CONSIGNEE, null, null, ACME_OPTIONS));
 
         // then
         assertEquals("ACME-PO-" + ref, regular.externalOrderId());
@@ -99,7 +103,7 @@ class AcmeDropshipBehaviourTest {
 
         // when
         SupplierOrderResult result = acme.placeDropshipOrder(
-                new SupplierDropshipRequest(ref, sampleLines(), CONSIGNEE, null, LOCKER));
+                new SupplierDropshipRequest(ref, sampleLines(), CONSIGNEE, null, LOCKER, ACME_OPTIONS));
 
         // then
         assertTrue(acme.supportsPickupPointDropship());
@@ -134,13 +138,15 @@ class AcmeDropshipBehaviourTest {
         String courierRef = UUID.randomUUID().toString();
 
         // when
-        acme.placeDropshipOrder(new SupplierDropshipRequest(pickupRef, sampleLines(), CONSIGNEE, null, LOCKER));
+        acme.placeDropshipOrder(
+                new SupplierDropshipRequest(pickupRef, sampleLines(), CONSIGNEE, null, LOCKER, ACME_OPTIONS));
 
         // then
         assertEquals("WAW04A", AcmeSupplierProvider.lastPickupPointCode("Acme").orElseThrow());
 
         // when a later courier (non-pickup-point) dropship order is placed
-        acme.placeDropshipOrder(new SupplierDropshipRequest(courierRef, sampleLines(), CONSIGNEE));
+        acme.placeDropshipOrder(
+                new SupplierDropshipRequest(courierRef, sampleLines(), CONSIGNEE, null, null, ACME_OPTIONS));
 
         // then the last recorded pickup point code is unchanged
         assertEquals("WAW04A", AcmeSupplierProvider.lastPickupPointCode("Acme").orElseThrow());

@@ -21,6 +21,10 @@ Each one requires a delivery address picked from the same four mock addresses
 `ACMEB-PO-`. Orders are idempotent per supplier and client order reference, so
 the same reference used at both suppliers places two independent orders.
 
+`Acme` declares one order option, `shippingService` (`standard` default / `express`), required;
+orders without it or with another value are rejected before placement. `AcmeB` declares no options
+(exercises the no-options path).
+
 Optional configuration fields tune ordering behaviour:
 
 | Field                         | Default | Effect                                                                                                                                                                                                                    |

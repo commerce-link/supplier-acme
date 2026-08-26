@@ -17,6 +17,10 @@ class AcmeTrackingContractTest extends SupplierOrderTrackingContractTest {
     private static final SupplierConsignee CONSIGNEE = new SupplierConsignee(null, "Jan", "Kowalski",
             "ul. Polna 1", "00-001", "Warszawa", "PL", "+48601234567", "jan.kowalski@example.com");
 
+    // Acme requires a shipping service; this is the default valid choice for tests unrelated to that option.
+    private static final Map<String, String> ACME_OPTIONS =
+            Map.of(AcmeSupplierProvider.SHIPPING_SERVICE_OPTION, "standard");
+
     @Override
     protected SupplierProvider trackingProvider() {
         return new AcmeSupplierProvider(Map.of("trackingShipAfterChecks", "2"));
@@ -34,7 +38,8 @@ class AcmeTrackingContractTest extends SupplierOrderTrackingContractTest {
 
     @Override
     protected SupplierOrderResult placeSampleOrder(SupplierProvider provider, String clientOrderRef) {
-        return provider.placeDropshipOrder(new SupplierDropshipRequest(clientOrderRef, sampleLines(), CONSIGNEE));
+        return provider.placeDropshipOrder(
+                new SupplierDropshipRequest(clientOrderRef, sampleLines(), CONSIGNEE, null, null, ACME_OPTIONS));
     }
 
     @Override
