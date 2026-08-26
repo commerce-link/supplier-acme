@@ -119,8 +119,11 @@ class AcmeDropshipBehaviourTest {
         // when / then
         assertFalse(acme.supportsPickupPointDropship());
         assertTrue(acme.supportsDropshipping());
-        assertThrows(SupplierOrderRejectedException.class, () -> acme.placeDropshipOrder(
-                new SupplierDropshipRequest(ref, sampleLines(), CONSIGNEE, null, LOCKER)));
+        SupplierOrderRejectedException rejected = assertThrows(SupplierOrderRejectedException.class,
+                () -> acme.placeDropshipOrder(
+                        new SupplierDropshipRequest(ref, sampleLines(), CONSIGNEE, null, LOCKER, ACME_OPTIONS)));
+        assertTrue(rejected.getMessage().toLowerCase().contains("pickup"),
+                "Expected the pickup-point guard to reject this order, but got: " + rejected.getMessage());
         assertTrue(acme.trackOrder(new SupplierOrderLookup(null, ref)).isEmpty());
     }
 
