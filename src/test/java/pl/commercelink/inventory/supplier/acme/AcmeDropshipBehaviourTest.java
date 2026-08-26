@@ -125,4 +125,24 @@ class AcmeDropshipBehaviourTest {
         // when / then
         assertFalse(new AcmeBSupplierDescriptor().create(Map.of()).supportsPickupPointDropship());
     }
+
+    @Test
+    void acmeRecordsThePickupPointCodeItWasAskedToDeliverTo() {
+        // given
+        SupplierProvider acme = new AcmeSupplierDescriptor().create(Map.of());
+        String pickupRef = UUID.randomUUID().toString();
+        String courierRef = UUID.randomUUID().toString();
+
+        // when
+        acme.placeDropshipOrder(new SupplierDropshipRequest(pickupRef, sampleLines(), CONSIGNEE, null, LOCKER));
+
+        // then
+        assertEquals("WAW04A", AcmeSupplierProvider.lastPickupPointCode("Acme").orElseThrow());
+
+        // when a later courier (non-pickup-point) dropship order is placed
+        acme.placeDropshipOrder(new SupplierDropshipRequest(courierRef, sampleLines(), CONSIGNEE));
+
+        // then the last recorded pickup point code is unchanged
+        assertEquals("WAW04A", AcmeSupplierProvider.lastPickupPointCode("Acme").orElseThrow());
+    }
 }

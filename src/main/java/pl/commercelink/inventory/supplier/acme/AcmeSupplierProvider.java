@@ -11,6 +11,7 @@ import pl.commercelink.inventory.supplier.api.SupplierOrderOutcomeUnknownExcepti
 import pl.commercelink.inventory.supplier.api.SupplierOrderRejectedException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderResult;
 import pl.commercelink.inventory.supplier.api.SupplierOrderTracking;
+import pl.commercelink.inventory.supplier.api.SupplierPickupPoint;
 import pl.commercelink.inventory.supplier.api.SupplierProvider;
 import pl.commercelink.inventory.supplier.api.SupplierPurchaseRequest;
 import pl.commercelink.inventory.supplier.api.SupplierQuote;
@@ -34,6 +35,12 @@ import static pl.commercelink.taxonomy.UnifiedProductIdentifiers.unifyEan;
 class AcmeSupplierProvider implements SupplierProvider {
 
     private static final Map<String, SupplierOrderResult> PLACED_ORDERS = new ConcurrentHashMap<>();
+
+    /** Pickup point code recorded per placed dropship order, keyed like {@link #PLACED_ORDERS}. */
+    private static final Map<String, String> PICKUP_POINTS = new ConcurrentHashMap<>();
+
+    /** Pickup point code most recently recorded per supplier name, for the dropship contract kit. */
+    private static final Map<String, String> LAST_PICKUP_POINT_CODE = new ConcurrentHashMap<>();
 
     private static final List<SupplierDeliveryAddress> DELIVERY_ADDRESSES = List.of(
             new SupplierDeliveryAddress("1", "ul. Przemysłowa 12", "Warszawa", "02-495", "PL"),
@@ -153,16 +160,30 @@ class AcmeSupplierProvider implements SupplierProvider {
             throw new SupplierOrderException(
                     "Missing consignee, refusing to place a " + supplier.name() + " dropship order");
         }
-        // The pickup point itself is deliberately not echoed anywhere below: the SPI tracking
-        // model (SupplierParcel) has no pickup notion, and the app re-derives the PickupPoint
-        // shipment from the order's own collectionPointCode instead.
-        if (request.pickupPoint() != null && !supportsPickupPointDropship()) {
+        // The pickup point is never echoed back through order tracking: the SPI tracking model
+        // (SupplierParcel) has no pickup notion, and the app re-derives the PickupPoint shipment
+        // from the order's own collectionPointCode instead. It is still remembered below, purely
+        // so the dropship contract kit can observe what the (fake) supplier received.
+        SupplierPickupPoint pickupPoint = request.pickupPoint();
+        if (pickupPoint != null && !supportsPickupPointDropship()) {
             throw new SupplierOrderRejectedException(supplier.name()
                     + " does not deliver dropship orders to carrier pickup points (requested "
-                    + request.pickupPoint().carrier() + " " + request.pickupPoint().code() + ")");
+                    + pickupPoint.carrier() + " " + pickupPoint.code() + ")");
         }
-        return PLACED_ORDERS.computeIfAbsent(supplier.name() + "|DS|" + clientOrderRef,
-                key -> fulfil(request.lines(), dropshipOrderIdPrefix() + clientOrderRef));
+        String key = supplier.name() + "|DS|" + clientOrderRef;
+        return PLACED_ORDERS.computeIfAbsent(key, k -> {
+            SupplierOrderResult result = fulfil(request.lines(), dropshipOrderIdPrefix() + clientOrderRef);
+            if (pickupPoint != null) {
+                PICKUP_POINTS.put(k, pickupPoint.code());
+                LAST_PICKUP_POINT_CODE.put(supplier.name(), pickupPoint.code());
+            }
+            return result;
+        });
+    }
+
+    /** Pickup point code most recently recorded for {@code supplierName}, if any. */
+    static Optional<String> lastPickupPointCode(String supplierName) {
+        return Optional.ofNullable(LAST_PICKUP_POINT_CODE.get(supplierName));
     }
 
     @Override

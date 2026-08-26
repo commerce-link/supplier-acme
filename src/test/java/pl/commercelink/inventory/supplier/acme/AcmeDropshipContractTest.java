@@ -49,4 +49,9 @@ class AcmeDropshipContractTest extends SupplierDropshipContractTest {
     protected Optional<SupplierProvider> dropshipProviderWithoutPickupPoints() {
         return Optional.of(new AcmeSupplierProvider(Map.of("orderingPickupPointsEnabled", "0")));
     }
+
+    @Override
+    protected Optional<String> remotePickupPointCode() {
+        return AcmeSupplierProvider.lastPickupPointCode(AcmeSupplierDescriptor.SUPPLIER.name());
+    }
 }
