@@ -20,6 +20,11 @@ class AcmeBSupplierDescriptorTest {
     private static final List<SupplierOrderLine> SAMPLE_LINES =
             List.of(new SupplierOrderLine("ACME-5900000000002", "5900000000002", "MFN-VALUE-01", 1));
 
+    // Acme (unlike AcmeB) requires a shipping service; this is the default valid choice for tests
+    // unrelated to that option.
+    private static final Map<String, String> ACME_OPTIONS =
+            Map.of(AcmeSupplierProvider.SHIPPING_SERVICE_OPTION, "standard");
+
     @Test
     void configurationFieldsIncludeTheScenarioOverride() {
         // given / when
@@ -61,12 +66,21 @@ class AcmeBSupplierDescriptorTest {
 
         // when
         SupplierOrderResult acmeOrder = acme.placeOrder(
-                new SupplierPurchaseRequest(clientOrderRef, SAMPLE_LINES, "2"));
+                new SupplierPurchaseRequest(clientOrderRef, SAMPLE_LINES, "2", ACME_OPTIONS));
         SupplierOrderResult acmeBOrder = acmeB.placeOrder(
                 new SupplierPurchaseRequest(clientOrderRef, SAMPLE_LINES, "2"));
 
         // then
         assertEquals("ACME-PO-" + clientOrderRef, acmeOrder.externalOrderId());
         assertEquals("ACMEB-PO-" + clientOrderRef, acmeBOrder.externalOrderId());
+    }
+
+    @Test
+    void configurationFieldsIncludeThePickupPointsKnob() {
+        // given / when
+        List<ProviderField> fields = new AcmeBSupplierDescriptor().configurationFields();
+
+        // then
+        assertTrue(fields.stream().anyMatch(field -> field.key().equals("orderingPickupPointsEnabled")));
     }
 }

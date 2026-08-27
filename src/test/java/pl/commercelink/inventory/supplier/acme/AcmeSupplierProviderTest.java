@@ -10,8 +10,12 @@ import pl.commercelink.inventory.supplier.api.SupplierOrderOutcomeUnknownExcepti
 import pl.commercelink.inventory.supplier.api.SupplierOrderRejectedException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderResult;
 import pl.commercelink.inventory.supplier.api.SupplierDeliveryAddress;
+import pl.commercelink.inventory.supplier.api.SupplierOrderOption;
+import pl.commercelink.inventory.supplier.api.SupplierOrderOptionChoice;
+import pl.commercelink.inventory.supplier.api.SupplierOrderOptionsContext;
 import pl.commercelink.inventory.supplier.api.SupplierPurchaseRequest;
 import pl.commercelink.inventory.supplier.api.SupplierQuote;
+import pl.commercelink.provider.api.ProviderField;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -31,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 class AcmeSupplierProviderTest {
@@ -41,8 +46,17 @@ class AcmeSupplierProviderTest {
         AcmeSupplierProvider.reloadStateForTests();
     }
 
+    /** Acme requires a chosen shipping service; this is the default valid choice for tests unrelated to that option. */
+    private static final Map<String, String> DEFAULT_OPTIONS =
+            Map.of(AcmeSupplierProvider.SHIPPING_SERVICE_OPTION, "standard");
+
     private static SupplierPurchaseRequest purchase(String clientOrderRef, List<SupplierOrderLine> lines) {
-        return new SupplierPurchaseRequest(clientOrderRef, lines, "2");
+        return new SupplierPurchaseRequest(clientOrderRef, lines, "2", DEFAULT_OPTIONS);
+    }
+
+    private static SupplierDropshipRequest dropship(String clientOrderRef, List<SupplierOrderLine> lines,
+                                                      SupplierConsignee consignee) {
+        return new SupplierDropshipRequest(clientOrderRef, lines, consignee, null, null, DEFAULT_OPTIONS);
     }
 
 
@@ -276,7 +290,7 @@ class AcmeSupplierProviderTest {
         // given
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         String ref = UUID.randomUUID().toString();
-        SupplierDropshipRequest dropshipRequest = new SupplierDropshipRequest(ref,
+        SupplierDropshipRequest dropshipRequest = dropship(ref,
                 List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)), CONSIGNEE);
 
         // when
@@ -297,7 +311,7 @@ class AcmeSupplierProviderTest {
         List<SupplierOrderLine> lines = List.of(
                 new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5));
         SupplierPurchaseRequest request = purchase(ref, lines);
-        SupplierDropshipRequest dropshipRequest = new SupplierDropshipRequest(ref, lines, CONSIGNEE);
+        SupplierDropshipRequest dropshipRequest = dropship(ref, lines, CONSIGNEE);
 
         // when
         SupplierOrderResult placedRegular = provider.placeOrder(request);
@@ -334,6 +348,15 @@ class AcmeSupplierProviderTest {
 
         // then
         assertEquals(0, quotes.getFirst().availableQuantity());
+    }
+
+    @Test
+    void configurationFieldsIncludeThePickupPointsKnob() {
+        // given / when
+        List<ProviderField> fields = new AcmeSupplierDescriptor().configurationFields();
+
+        // then
+        assertTrue(fields.stream().anyMatch(field -> field.key().equals("orderingPickupPointsEnabled")));
     }
 
     private static SupplierOrderLine simLine(String ean, String mfn) {
@@ -468,7 +491,7 @@ class AcmeSupplierProviderTest {
         // given
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         String ref = UUID.randomUUID().toString();
-        SupplierDropshipRequest request = new SupplierDropshipRequest(ref,
+        SupplierDropshipRequest request = dropship(ref,
                 List.of(simLine("5900000000902", "SIM-UNKNOWN-PLACED")), CONSIGNEE);
 
         // when / then
@@ -541,5 +564,39 @@ class AcmeSupplierProviderTest {
         } finally {
             pool.shutdownNow();
         }
+    }
+
+    @Test
+    void acmeDeclaresTheShippingServiceOptionAndAcmeBDoesNot() {
+        // given
+        List<SupplierOrderOption> acme = new AcmeSupplierProvider(Map.of())
+                .orderOptions(SupplierOrderOptionsContext.warehouse());
+        List<SupplierOrderOption> acmeB = new AcmeBSupplierDescriptor().create(Map.of())
+                .orderOptions(SupplierOrderOptionsContext.warehouse());
+
+        // then
+        assertEquals(1, acme.size());
+        assertEquals("shippingService", acme.getFirst().key());
+        assertEquals("standard", acme.getFirst().defaultValue());
+        assertTrue(acme.getFirst().required());
+        assertEquals(List.of("standard", "express"),
+                acme.getFirst().choices().stream().map(SupplierOrderOptionChoice::value).toList());
+        assertTrue(acmeB.isEmpty());
+    }
+
+    @Test
+    void placeOrderRejectsMissingOrUnknownShippingService() {
+        // given
+        AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
+        List<SupplierOrderLine> lines = List.of(
+                new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 1));
+
+        // when / then
+        assertThrows(SupplierOrderRejectedException.class,
+                () -> provider.placeOrder(new SupplierPurchaseRequest(UUID.randomUUID().toString(), lines, "2")));
+        assertThrows(SupplierOrderRejectedException.class, () -> provider.placeOrder(
+                new SupplierPurchaseRequest(UUID.randomUUID().toString(), lines, "2", Map.of("shippingService", "drone"))));
+        assertNotNull(provider.placeOrder(new SupplierPurchaseRequest(UUID.randomUUID().toString(), lines, "2",
+                Map.of("shippingService", "express"))).externalOrderId());
     }
 }

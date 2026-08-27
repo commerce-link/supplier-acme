@@ -21,13 +21,30 @@ Each one requires a delivery address picked from the same four mock addresses
 `ACMEB-PO-`. Orders are idempotent per supplier and client order reference, so
 the same reference used at both suppliers places two independent orders.
 
-Three optional configuration fields simulate a misbehaving supplier:
+`Acme` declares one order option, `shippingService` (`standard` default / `express`), required;
+orders without it or with another value are rejected before placement. `AcmeB` declares no options
+(exercises the no-options path).
 
-| Field                        | Effect                                                                                                                                                       |
-|------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `orderingUnavailableEans`    | Comma-separated EANs always quoted as out of stock                                                                                                              |
-| `orderingPriceDriftPercent`  | Live order price drifts from the feed price by this percent                                                                                                     |
-| `orderingScenarioOverride`   | Labeled `Symulacja: wymuś scenariusz zakupu`. Forces the outcome for **every** purchase placed against this supplier connection, overriding the SIM-* product lookup below. One of `OK`, `UNKNOWN_PLACED`, `UNKNOWN_LOST`, `REJECTED`, `BLANK_ID` (case-insensitive), or blank to fall back to per-product SIM-* behaviour. Help text: "puste = wg produktu SIM-\*; OK \| UNKNOWN_PLACED \| UNKNOWN_LOST \| REJECTED \| BLANK_ID — dotyczy każdego zakupu w sklepie". |
+Optional configuration fields tune ordering behaviour:
+
+| Field                         | Default | Effect                                                                                                                                                                                                                    |
+|-------------------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `orderingUnavailableEans`     |         | Comma-separated EANs always quoted as out of stock                                                                                                                                                                        |
+| `orderingPriceDriftPercent`   | 0       | Live order price drifts from the feed price by this percent                                                                                                                                                               |
+| `orderingPickupPointsEnabled` | 1       | Applies to both Acme and AcmeB: any value other than `1`/`true` disables pickup-point dropship support, so a dropship order naming a pickup point is rejected (`SupplierOrderRejectedException`) instead of being placed. |
+| `orderingScenarioOverride`    |         | Labeled `Symulacja: wymuś scenariusz zakupu`. Forces the outcome for **every** purchase placed against this supplier connection, overriding the SIM-* product lookup below. One of `OK`, `UNKNOWN_PLACED`, `UNKNOWN_LOST`, `REJECTED`, `BLANK_ID` (case-insensitive), or blank to fall back to per-product SIM-* behaviour. Help text: "puste = wg produktu SIM-\*; OK \| UNKNOWN_PLACED \| UNKNOWN_LOST \| REJECTED \| BLANK_ID — dotyczy każdego zakupu w sklepie". |
+
+### Tracking simulation
+
+Both suppliers answer `supportsOrderTracking()`. `trackOrder` finds the order by its Acme number
+(`ACME-PO-…`/`ACME-DS-…`) or by client reference and replays a scripted lifecycle:
+
+| Knob | Default | Effect |
+|---|---|---|
+| `trackingShipAfterChecks` | `2` | checks 1..N-1 answer `PROCESSING`; from the N-th the scenario applies |
+| `trackingScenario` | `single` | `single` — `SHIPPED`, one DPD parcel `ACME-TRK-<ref>` without lines; `parts` — N-th check `PARTIALLY_SHIPPED` with parcel `-1` (first line), next check `SHIPPED` with parcels `-1` and `-2` (remaining lines); `cancel` — `CANCELLED`; `nodata` — `SHIPPED` without parcels |
+
+Check counters and generated parcels are static (per JVM), like the placed-order store.
 
 ### SIM-* scenario products
 
