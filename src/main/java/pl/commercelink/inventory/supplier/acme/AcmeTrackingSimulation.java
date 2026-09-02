@@ -70,13 +70,13 @@ final class AcmeTrackingSimulation {
     private SupplierOrderTracking parts(String orderKey, SupplierOrderResult placed, int stage) {
         List<SupplierOrderLine> lines = placed.confirmedLines().stream().map(AcmeTrackingSimulation::toLine).toList();
         if (lines.size() < 2) {
-            return new SupplierOrderTracking(SupplierOrderState.SHIPPED, List.of(parcel(orderKey, "-1", lines)));
+            return new SupplierOrderTracking(SupplierOrderState.SHIPPED, List.of(parcel(orderKey, "P1", lines)));
         }
-        SupplierParcel first = parcel(orderKey, "-1", lines.subList(0, 1));
+        SupplierParcel first = parcel(orderKey, "P1", lines.subList(0, 1));
         if (stage == 0) {
             return new SupplierOrderTracking(SupplierOrderState.PARTIALLY_SHIPPED, List.of(first));
         }
-        SupplierParcel second = parcel(orderKey, "-2", lines.subList(1, lines.size()));
+        SupplierParcel second = parcel(orderKey, "P2", lines.subList(1, lines.size()));
         return new SupplierOrderTracking(SupplierOrderState.SHIPPED, List.of(first, second));
     }
 
@@ -91,7 +91,7 @@ final class AcmeTrackingSimulation {
     }
 
     private static String trackingPrefix(String orderKey) {
-        return orderKey.substring(0, orderKey.indexOf('|')).toUpperCase(Locale.ROOT) + "-TRK-";
+        return orderKey.substring(0, orderKey.indexOf('|')).toUpperCase(Locale.ROOT) + "TRK";
     }
 
     private static final int SHORT_REF_LENGTH = 12;
@@ -101,8 +101,9 @@ final class AcmeTrackingSimulation {
     }
 
     /**
-     * Real carriers accept short numbers only (Furgonetka: 7-34 characters), so the simulated tracking number
-     * carries the first 12 hex digits of the purchase reference instead of the whole UUID.
+     * Real carriers accept short alphanumeric numbers only (Furgonetka: 7-34 characters, {@code [A-Za-z0-9]}
+     * with no separators), so the simulated tracking number carries the first 12 hex digits of the purchase
+     * reference instead of the whole UUID, and the prefix/part suffixes avoid hyphens too.
      */
     static String shortClientRef(String purchaseRef) {
         String compact = purchaseRef.replace("-", "");

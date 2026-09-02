@@ -58,8 +58,8 @@ class AcmeTrackingSimulationTest {
         assertEquals(SupplierOrderState.SHIPPED, tracking.state());
         assertEquals(1, tracking.parcels().size());
         assertEquals("DPD", tracking.parcels().get(0).carrier());
-        assertEquals("ACME-TRK-" + AcmeTrackingSimulation.shortClientRef(ref), tracking.parcels().get(0).trackingNo());
-        assertEquals("https://tracking.acme.example/ACME-TRK-" + AcmeTrackingSimulation.shortClientRef(ref),
+        assertEquals("ACMETRK" + AcmeTrackingSimulation.shortClientRef(ref), tracking.parcels().get(0).trackingNo());
+        assertEquals("https://tracking.acme.example/ACMETRK" + AcmeTrackingSimulation.shortClientRef(ref),
                 tracking.parcels().get(0).trackingUrl());
         assertTrue(tracking.parcels().get(0).lines().isEmpty());
         assertTrue(tracking.parcels().get(0).shippedAt() != null);
@@ -79,13 +79,13 @@ class AcmeTrackingSimulationTest {
         // then
         assertEquals(SupplierOrderState.PARTIALLY_SHIPPED, stage1.state());
         assertEquals(1, stage1.parcels().size());
-        assertEquals("ACME-TRK-" + AcmeTrackingSimulation.shortClientRef(ref) + "-1",
+        assertEquals("ACMETRK" + AcmeTrackingSimulation.shortClientRef(ref) + "P1",
                 stage1.parcels().get(0).trackingNo());
         assertEquals("5900000000001", stage1.parcels().get(0).lines().get(0).ean());
         assertEquals(SupplierOrderState.SHIPPED, stage2.state());
         assertEquals(2, stage2.parcels().size());
         assertEquals(stage1.parcels().get(0), stage2.parcels().get(0));
-        assertEquals("ACME-TRK-" + AcmeTrackingSimulation.shortClientRef(ref) + "-2",
+        assertEquals("ACMETRK" + AcmeTrackingSimulation.shortClientRef(ref) + "P2",
                 stage2.parcels().get(1).trackingNo());
         assertEquals("5900000000002", stage2.parcels().get(1).lines().get(0).ean());
     }
@@ -179,12 +179,12 @@ class AcmeTrackingSimulationTest {
                 new SupplierOrderResult("ACMEB-PO-" + ref, 1.0, "PLN", List.of()));
 
         // then
-        assertEquals("ACMEB-TRK-c94af5c9663f", tracking.parcels().get(0).trackingNo());
+        assertEquals("ACMEBTRKc94af5c9663f", tracking.parcels().get(0).trackingNo());
     }
 
     @Test
-    void trackingNumbersFitFurgonetkaLimitOf34CharactersIncludingPartSuffix() {
-        // given: Furgonetka accepts package numbers of 7 to 34 characters
+    void trackingNumbersAreAlphanumericAndFitFurgonetkaLimitIncludingPartSuffix() {
+        // given: Furgonetka accepts alphanumeric package numbers of 7 to 34 characters, no separators
         AcmeTrackingSimulation simulation = new AcmeTrackingSimulation(
                 Map.of("trackingShipAfterChecks", "1", "trackingScenario", "parts"));
         String ref = UUID.randomUUID().toString();
@@ -195,12 +195,12 @@ class AcmeTrackingSimulationTest {
 
         // then
         for (SupplierParcel parcel : second.parcels()) {
-            assertTrue(parcel.trackingNo().length() >= 7 && parcel.trackingNo().length() <= 34,
-                    "tracking number out of Furgonetka range: " + parcel.trackingNo());
+            assertTrue(parcel.trackingNo().matches("[A-Za-z0-9]{7,34}"),
+                    "tracking number not accepted by Furgonetka: " + parcel.trackingNo());
         }
         assertEquals(2, second.parcels().size());
-        assertEquals("ACME-TRK-" + AcmeTrackingSimulation.shortClientRef(ref) + "-1", first.parcels().get(0).trackingNo());
-        assertEquals("ACME-TRK-" + AcmeTrackingSimulation.shortClientRef(ref) + "-2", second.parcels().get(1).trackingNo());
+        assertEquals("ACMETRK" + AcmeTrackingSimulation.shortClientRef(ref) + "P1", first.parcels().get(0).trackingNo());
+        assertEquals("ACMETRK" + AcmeTrackingSimulation.shortClientRef(ref) + "P2", second.parcels().get(1).trackingNo());
     }
 
     @Test
