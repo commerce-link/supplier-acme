@@ -94,7 +94,18 @@ final class AcmeTrackingSimulation {
         return orderKey.substring(0, orderKey.indexOf('|')).toUpperCase(Locale.ROOT) + "-TRK-";
     }
 
+    private static final int SHORT_REF_LENGTH = 12;
+
     private static String clientRef(String orderKey) {
-        return orderKey.substring(orderKey.lastIndexOf('|') + 1);
+        return shortClientRef(orderKey.substring(orderKey.lastIndexOf('|') + 1));
+    }
+
+    /**
+     * Real carriers accept short numbers only (Furgonetka: 7-34 characters), so the simulated tracking number
+     * carries the first 12 hex digits of the purchase reference instead of the whole UUID.
+     */
+    static String shortClientRef(String purchaseRef) {
+        String compact = purchaseRef.replace("-", "");
+        return compact.length() <= SHORT_REF_LENGTH ? compact : compact.substring(0, SHORT_REF_LENGTH);
     }
 }

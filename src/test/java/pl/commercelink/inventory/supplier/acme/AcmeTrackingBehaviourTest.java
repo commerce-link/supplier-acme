@@ -65,7 +65,7 @@ class AcmeTrackingBehaviourTest {
         // then
         assertTrue(tracking.isPresent());
         assertEquals(SupplierOrderState.SHIPPED, tracking.get().state());
-        assertEquals("ACME-TRK-" + ref, tracking.get().parcels().get(0).trackingNo());
+        assertEquals("ACME-TRK-" + AcmeTrackingSimulation.shortClientRef(ref), tracking.get().parcels().get(0).trackingNo());
     }
 
     @Test
@@ -95,7 +95,7 @@ class AcmeTrackingBehaviourTest {
 
         // then
         assertTrue(tracking.isPresent());
-        assertEquals("ACME-TRK-" + ref, tracking.get().parcels().get(0).trackingNo());
+        assertEquals("ACME-TRK-" + AcmeTrackingSimulation.shortClientRef(ref), tracking.get().parcels().get(0).trackingNo());
     }
 
     @Test
