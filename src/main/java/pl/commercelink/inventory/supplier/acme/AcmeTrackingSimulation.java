@@ -23,6 +23,7 @@ final class AcmeTrackingSimulation {
     static final String SCENARIO_KEY = "trackingScenario";
     static final String CARRIER = "DPD";
     static final String TRACKING_URL_PREFIX = "https://tracking.acme.example/";
+    private static final int SHORT_REF_LENGTH = 12;
 
     private static final Map<String, AtomicInteger> CHECKS = new ConcurrentHashMap<>();
     private static final Map<String, SupplierParcel> PARCELS = new ConcurrentHashMap<>();
@@ -94,18 +95,14 @@ final class AcmeTrackingSimulation {
         return orderKey.substring(0, orderKey.indexOf('|')).toUpperCase(Locale.ROOT) + "TRK";
     }
 
-    private static final int SHORT_REF_LENGTH = 12;
-
     private static String clientRef(String orderKey) {
         return shortClientRef(orderKey.substring(orderKey.lastIndexOf('|') + 1));
     }
 
     /**
-     * Real carriers accept short upper-case alphanumeric numbers only (Furgonetka: 7-34 characters,
-     * {@code [A-Za-z0-9]} with no separators, and it echoes package numbers back upper-cased in webhooks,
-     * which the app matches case-sensitively), so the simulated tracking number carries the first 12 hex
-     * digits of the purchase reference, upper-cased, instead of the whole UUID, and the prefix/part suffixes
-     * avoid hyphens too.
+     * Carriers accept short upper-case alphanumeric numbers only (Furgonetka: 7-34 characters,
+     * {@code [A-Z0-9]}) and echo them upper-cased in webhooks, so the simulation emits the first 12 hex
+     * digits of the purchase reference in upper case to round-trip byte-for-byte.
      */
     static String shortClientRef(String purchaseRef) {
         String compact = purchaseRef.replace("-", "");

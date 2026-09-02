@@ -1,6 +1,8 @@
 package pl.commercelink.inventory.supplier.acme;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import pl.commercelink.inventory.supplier.api.SupplierOrderException;
 import pl.commercelink.inventory.supplier.api.SupplierOrderResult;
 import pl.commercelink.inventory.supplier.api.SupplierOrderState;
@@ -212,6 +214,21 @@ class AcmeTrackingSimulationTest {
                 () -> new AcmeTrackingSimulation(Map.of("trackingShipAfterChecks", "0")));
         assertThrows(SupplierOrderException.class,
                 () -> new AcmeTrackingSimulation(Map.of("trackingShipAfterChecks", "abc")));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "c94af5c9-663f-4961-b768-6f34f2039f34, C94AF5C9663F",
+            "c94af5c9663f4961b7686f34f2039f34, C94AF5C9663F",
+            "abc, ABC",
+            "'', ''"
+    })
+    void shortClientRefTruncatesStripsHyphensAndUpperCases(String purchaseRef, String expected) {
+        // when
+        String result = AcmeTrackingSimulation.shortClientRef(purchaseRef);
+
+        // then
+        assertEquals(expected, result);
     }
 
     @Test
