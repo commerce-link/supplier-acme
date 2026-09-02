@@ -101,12 +101,15 @@ final class AcmeTrackingSimulation {
     }
 
     /**
-     * Real carriers accept short alphanumeric numbers only (Furgonetka: 7-34 characters, {@code [A-Za-z0-9]}
-     * with no separators), so the simulated tracking number carries the first 12 hex digits of the purchase
-     * reference instead of the whole UUID, and the prefix/part suffixes avoid hyphens too.
+     * Real carriers accept short upper-case alphanumeric numbers only (Furgonetka: 7-34 characters,
+     * {@code [A-Za-z0-9]} with no separators, and it echoes package numbers back upper-cased in webhooks,
+     * which the app matches case-sensitively), so the simulated tracking number carries the first 12 hex
+     * digits of the purchase reference, upper-cased, instead of the whole UUID, and the prefix/part suffixes
+     * avoid hyphens too.
      */
     static String shortClientRef(String purchaseRef) {
         String compact = purchaseRef.replace("-", "");
-        return compact.length() <= SHORT_REF_LENGTH ? compact : compact.substring(0, SHORT_REF_LENGTH);
+        String truncated = compact.length() <= SHORT_REF_LENGTH ? compact : compact.substring(0, SHORT_REF_LENGTH);
+        return truncated.toUpperCase(Locale.ROOT);
     }
 }

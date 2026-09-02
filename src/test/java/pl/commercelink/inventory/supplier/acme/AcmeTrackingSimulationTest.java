@@ -179,7 +179,7 @@ class AcmeTrackingSimulationTest {
                 new SupplierOrderResult("ACMEB-PO-" + ref, 1.0, "PLN", List.of()));
 
         // then
-        assertEquals("ACMEBTRKc94af5c9663f", tracking.parcels().get(0).trackingNo());
+        assertEquals("ACMEBTRKC94AF5C9663F", tracking.parcels().get(0).trackingNo());
     }
 
     @Test
@@ -195,7 +195,7 @@ class AcmeTrackingSimulationTest {
 
         // then
         for (SupplierParcel parcel : second.parcels()) {
-            assertTrue(parcel.trackingNo().matches("[A-Za-z0-9]{7,34}"),
+            assertTrue(parcel.trackingNo().matches("[A-Z0-9]{7,34}"),
                     "tracking number not accepted by Furgonetka: " + parcel.trackingNo());
         }
         assertEquals(2, second.parcels().size());
