@@ -42,7 +42,11 @@ Both suppliers answer `supportsOrderTracking()`. `trackOrder` finds the order by
 | Knob | Default | Effect |
 |---|---|---|
 | `trackingShipAfterChecks` | `2` | checks 1..N-1 answer `PROCESSING`; from the N-th the scenario applies |
-| `trackingScenario` | `single` | `single` — `SHIPPED`, one DPD parcel `ACME-TRK-<ref>` without lines; `parts` — N-th check `PARTIALLY_SHIPPED` with parcel `-1` (first line), next check `SHIPPED` with parcels `-1` and `-2` (remaining lines); `cancel` — `CANCELLED`; `nodata` — `SHIPPED` without parcels |
+| `trackingScenario` | `single` | `single` — `SHIPPED`, one DPD parcel `ACMETRK<ref>` (`ACMEBTRK<ref>` for AcmeB) without lines; `parts` — N-th check `PARTIALLY_SHIPPED` with parcel `ACMETRK<ref>P1` (first line), next check `SHIPPED` with parcels `ACMETRK<ref>P1` and `ACMETRK<ref>P2` (remaining lines); `cancel` — `CANCELLED`; `nodata` — `SHIPPED` without parcels |
+
+`<ref>` is the first 12 hex digits of the purchase reference, upper-cased. Real carriers (e.g.
+Furgonetka) only accept upper-case alphanumeric tracking numbers of 7-34 characters and echo them
+back upper-cased in webhooks, so the simulation mirrors that shape instead of using the full UUID.
 
 Check counters and generated parcels are static (per JVM), like the placed-order store.
 

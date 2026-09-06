@@ -23,6 +23,7 @@ final class AcmeTrackingSimulation {
     static final String SCENARIO_KEY = "trackingScenario";
     static final String CARRIER = "DPD";
     static final String TRACKING_URL_PREFIX = "https://tracking.acme.example/";
+    private static final int SHORT_REF_LENGTH = 12;
 
     private static final Map<String, AtomicInteger> CHECKS = new ConcurrentHashMap<>();
     private static final Map<String, SupplierParcel> PARCELS = new ConcurrentHashMap<>();
@@ -70,13 +71,13 @@ final class AcmeTrackingSimulation {
     private SupplierOrderTracking parts(String orderKey, SupplierOrderResult placed, int stage) {
         List<SupplierOrderLine> lines = placed.confirmedLines().stream().map(AcmeTrackingSimulation::toLine).toList();
         if (lines.size() < 2) {
-            return new SupplierOrderTracking(SupplierOrderState.SHIPPED, List.of(parcel(orderKey, "-1", lines)));
+            return new SupplierOrderTracking(SupplierOrderState.SHIPPED, List.of(parcel(orderKey, "P1", lines)));
         }
-        SupplierParcel first = parcel(orderKey, "-1", lines.subList(0, 1));
+        SupplierParcel first = parcel(orderKey, "P1", lines.subList(0, 1));
         if (stage == 0) {
             return new SupplierOrderTracking(SupplierOrderState.PARTIALLY_SHIPPED, List.of(first));
         }
-        SupplierParcel second = parcel(orderKey, "-2", lines.subList(1, lines.size()));
+        SupplierParcel second = parcel(orderKey, "P2", lines.subList(1, lines.size()));
         return new SupplierOrderTracking(SupplierOrderState.SHIPPED, List.of(first, second));
     }
 
@@ -91,10 +92,21 @@ final class AcmeTrackingSimulation {
     }
 
     private static String trackingPrefix(String orderKey) {
-        return orderKey.substring(0, orderKey.indexOf('|')).toUpperCase(Locale.ROOT) + "-TRK-";
+        return orderKey.substring(0, orderKey.indexOf('|')).toUpperCase(Locale.ROOT) + "TRK";
     }
 
     private static String clientRef(String orderKey) {
-        return orderKey.substring(orderKey.lastIndexOf('|') + 1);
+        return shortClientRef(orderKey.substring(orderKey.lastIndexOf('|') + 1));
+    }
+
+    /**
+     * Carriers accept short upper-case alphanumeric numbers only (Furgonetka: 7-34 characters,
+     * {@code [A-Z0-9]}) and echo them upper-cased in webhooks, so the simulation emits the first 12 hex
+     * digits of the purchase reference in upper case to round-trip byte-for-byte.
+     */
+    static String shortClientRef(String purchaseRef) {
+        String compact = purchaseRef.replace("-", "");
+        String truncated = compact.length() <= SHORT_REF_LENGTH ? compact : compact.substring(0, SHORT_REF_LENGTH);
+        return truncated.toUpperCase(Locale.ROOT);
     }
 }
