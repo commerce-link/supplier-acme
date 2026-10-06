@@ -32,8 +32,8 @@ class AcmeStateStoreTest {
     }
 
     private static SupplierOrderResult sampleOrder() {
-        return new SupplierOrderResult("ACME-PO-abc", 1299.00, "PLN",
-                List.of(new SupplierQuote("5900000000001", "MFN-CLEAR-01", 20, 1299.00, "PLN")));
+        return new SupplierOrderResult("ACME-PO-abc", 1449.29, "PLN",
+                List.of(new SupplierQuote("730143318280", "100-100001973WOF", 20, 1449.29, "PLN")));
     }
 
     @Test

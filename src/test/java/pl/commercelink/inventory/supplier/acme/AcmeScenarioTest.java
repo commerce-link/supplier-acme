@@ -15,7 +15,7 @@ class AcmeScenarioTest {
         assertEquals(Optional.of(AcmeScenario.UNKNOWN_LOST), AcmeScenario.fromMfn("SIM-UNKNOWN-LOST"));
         assertEquals(Optional.of(AcmeScenario.REJECTED), AcmeScenario.fromMfn("sim-rejected"));
         assertEquals(Optional.of(AcmeScenario.BLANK_ID), AcmeScenario.fromMfn("SIM-BLANK-ID"));
-        assertEquals(Optional.empty(), AcmeScenario.fromMfn("MFN-CLEAR-01"));
+        assertEquals(Optional.empty(), AcmeScenario.fromMfn("100-100001973WOF"));
     }
 
     @Test

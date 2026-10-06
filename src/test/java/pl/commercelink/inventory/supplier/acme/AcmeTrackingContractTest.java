@@ -28,7 +28,7 @@ class AcmeTrackingContractTest extends SupplierOrderTrackingContractTest {
 
     @Override
     protected List<SupplierOrderLine> sampleLines() {
-        return List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 1));
+        return List.of(new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 1));
     }
 
     @Override

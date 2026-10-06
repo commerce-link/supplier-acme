@@ -32,8 +32,8 @@ class AcmeTrackingBehaviourTest {
 
     private static List<SupplierOrderLine> twoLines() {
         return List.of(
-                new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 1),
-                new SupplierOrderLine("ACME-5900000000002", "5900000000002", "MFN-VALUE-01", 1));
+                new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 1),
+                new SupplierOrderLine("ACME-4711636046213", "4711636046213", "90YV0M17-M0NA00", 1));
     }
 
     private static SupplierProvider acme(String... knobs) {

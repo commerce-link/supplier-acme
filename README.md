@@ -93,19 +93,21 @@ EAN;MFN;Brand;Name;Category;Price;Currency;Qty
 
 ## Test cases in feed data
 
-Both feeds share 12 overlapping EANs (`5900000000001`-`5900000000012`) with
-intentionally different prices and stock levels, plus each has 3 exclusive
-products.
+The feeds carry real PC components (CPUs, graphics cards, motherboards, memory, SSDs, power
+supplies, cases, CPU coolers and fans) with real EANs, manufacturer codes and names. Net prices
+and stock levels are synthetic. The files are byte-identical to the app's local seed
+(`app/src/main/resources/local-init/s3/feeds/`), which is where they are maintained.
 
-| Scenario                               | Examples                                                                                                |
-|----------------------------------------|---------------------------------------------------------------------------------------------------------|
-| **Price differences** across suppliers | CPU: 1299 (Acme) vs 1599 (AcmeB); GPU: 3899 vs 3199                                                     |
-| **Out of stock** (qty=0)               | Acme: MirageDrive, DesertDry; AcmeB: PhantomStock, DesertDry                                            |
-| **Low stock** (qty=1)                  | Acme: FinalUnit                                                                                         |
-| **High stock**                         | Acme: StockPile (200); PennyWise (80)                                                                   |
-| **Different currency**                 | ForeignExchange: PLN (Acme) vs EUR (AcmeB)                                                              |
-| **Supplier-exclusive products**        | Acme-only: SoloRun, LoneWolf, Singular (`5901*`); AcmeB-only: OnlyHere, Exclusive, UniqueBook (`5902*`) |
-| **Shared out-of-stock**                | DesertDry is 0 at both suppliers                                                                        |
+Acme sells 97 products and AcmeB 84; 51 of them are sold by both, plus the five `SIM-*` rows.
+
+| Scenario                               | Examples                                                                                  |
+|----------------------------------------|-------------------------------------------------------------------------------------------|
+| **Price differences** across suppliers | AcmeB is about 4% cheaper on every shared product, e.g. ASUS Dual RTX 5070: 2899.29 vs 2783.32 |
+| **Supplier-exclusive products**        | Acme-only: AMD Ryzen 7 9850X3D, ASUS ROG Astral RTX 5090; AcmeB-only: Samsung 9100 Pro 2TB |
+| **Low stock**                          | Lian Li O11 Dynamic EVO RGB (1, AcmeB), ASUS ROG Astral RTX 5090 (2, Acme)                |
+| **High stock**                         | Arctic P12 Pro (120), Lian Li UNI FAN CL Wireless 120 (120)                               |
+| **Different currency**                 | Noctua NF-A14x25 G2 PWM: PLN at Acme, EUR at AcmeB                                        |
+| **Out of stock**                       | no feed row has qty 0; use `orderingUnavailableEans` to quote a product as unavailable    |
 
 These cases exercise supplier selection, price comparison, currency handling,
 stock availability, and auto-discovery matching logic.

@@ -76,12 +76,12 @@ class AcmeSupplierProviderTest {
 
         // when
         List<SupplierQuote> quotes = provider.checkAvailability(
-                List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)));
+                List.of(new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 5)));
 
         // then
         assertEquals(1, quotes.size());
         assertEquals(20, quotes.get(0).availableQuantity());
-        assertEquals(1299.00, quotes.get(0).netPrice());
+        assertEquals(1449.29, quotes.get(0).netPrice());
         assertEquals("PLN", quotes.get(0).currency());
     }
 
@@ -89,11 +89,11 @@ class AcmeSupplierProviderTest {
     void reportsConfiguredEansAsUnavailable() {
         // given
         AcmeSupplierProvider provider = new AcmeSupplierProvider(
-                Map.of("orderingUnavailableEans", "5900000000001,5900000000002"));
+                Map.of("orderingUnavailableEans", "730143318280,4711636046213"));
 
         // when
         List<SupplierQuote> quotes = provider.checkAvailability(
-                List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 1)));
+                List.of(new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 1)));
 
         // then
         assertEquals(0, quotes.get(0).availableQuantity());
@@ -107,11 +107,11 @@ class AcmeSupplierProviderTest {
 
         // when
         List<SupplierQuote> quotes = provider.checkAvailability(
-                List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)));
+                List.of(new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 5)));
 
         // then
         assertEquals(20, quotes.get(0).availableQuantity());
-        assertEquals(1299.00, quotes.get(0).netPrice());
+        assertEquals(1449.29, quotes.get(0).netPrice());
     }
 
     @Test
@@ -122,10 +122,10 @@ class AcmeSupplierProviderTest {
 
         // when
         List<SupplierQuote> quotes = provider.checkAvailability(
-                List.of(new SupplierOrderLine("ACME-5900000000003", "5900000000003", "MFN-TWIN-01", 1)));
+                List.of(new SupplierOrderLine("ACME-740617342994", "740617342994", "KF560C30BBEK2-32", 1)));
 
         // then
-        assertEquals(504.9, quotes.get(0).netPrice(), 0.01);
+        assertEquals(2465.64, quotes.get(0).netPrice(), 0.01);
     }
 
     @Test
@@ -160,7 +160,7 @@ class AcmeSupplierProviderTest {
         // given
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         SupplierPurchaseRequest request = new SupplierPurchaseRequest(UUID.randomUUID().toString(),
-                List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 1)), "99");
+                List.of(new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 1)), "99");
 
         // when / then
         assertThrows(SupplierOrderException.class, () -> provider.placeOrder(request));
@@ -174,11 +174,11 @@ class AcmeSupplierProviderTest {
 
         // when
         SupplierOrderResult result = provider.placeOrder(purchase(
-                ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5))));
+                ref, List.of(new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 5))));
 
         // then
         assertEquals("ACME-PO-" + ref, result.externalOrderId());
-        assertEquals(5 * 1299.00, result.totalNet(), 0.01);
+        assertEquals(5 * 1449.29, result.totalNet(), 0.01);
         assertEquals("PLN", result.currency());
     }
 
@@ -188,8 +188,8 @@ class AcmeSupplierProviderTest {
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         SupplierPurchaseRequest request = purchase(
                 UUID.randomUUID().toString(),
-                List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5),
-                        new SupplierOrderLine("ACME-5900000000002", "5900000000002", "MFN-VALUE-01", 999)));
+                List.of(new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 5),
+                        new SupplierOrderLine("ACME-4711636046213", "4711636046213", "90YV0M17-M0NA00", 999)));
 
         // when / then
         assertThrows(SupplierOrderException.class, () -> provider.placeOrder(request));
@@ -201,7 +201,7 @@ class AcmeSupplierProviderTest {
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         String ref = UUID.randomUUID().toString();
         SupplierPurchaseRequest request = purchase(
-                ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)));
+                ref, List.of(new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 5)));
 
         // when
         SupplierOrderResult first = provider.placeOrder(request);
@@ -217,9 +217,9 @@ class AcmeSupplierProviderTest {
         // given
         String ref = UUID.randomUUID().toString();
         AcmeSupplierProvider blocked = new AcmeSupplierProvider(
-                Map.of("orderingUnavailableEans", "5900000000001"));
+                Map.of("orderingUnavailableEans", "730143318280"));
         SupplierPurchaseRequest request = purchase(
-                ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 1)));
+                ref, List.of(new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 1)));
         assertThrows(SupplierOrderException.class, () -> blocked.placeOrder(request));
 
         // when
@@ -234,9 +234,9 @@ class AcmeSupplierProviderTest {
     void quotesZeroForLineWithoutSku() {
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         List<SupplierQuote> quotes = provider.checkAvailability(
-                List.of(new SupplierOrderLine(null, "5900000000001", "MFN-CLEAR-01", 1)));
+                List.of(new SupplierOrderLine(null, "730143318280", "100-100001973WOF", 1)));
         assertEquals(0, quotes.getFirst().availableQuantity());
-        assertEquals("5900000000001", quotes.getFirst().ean());
+        assertEquals("730143318280", quotes.getFirst().ean());
     }
 
     @Test
@@ -244,8 +244,8 @@ class AcmeSupplierProviderTest {
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         SupplierOrderException e = assertThrows(SupplierOrderException.class, () -> provider.placeOrder(
                 purchase(UUID.randomUUID().toString(),
-                        List.of(new SupplierOrderLine(null, "5900000000001", "MFN-CLEAR-01", 1)))));
-        assertTrue(e.getMessage().contains("5900000000001"));
+                        List.of(new SupplierOrderLine(null, "730143318280", "100-100001973WOF", 1)))));
+        assertTrue(e.getMessage().contains("730143318280"));
     }
 
     @Test
@@ -254,7 +254,7 @@ class AcmeSupplierProviderTest {
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         String ref = UUID.randomUUID().toString();
         SupplierPurchaseRequest request = purchase(
-                ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)));
+                ref, List.of(new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 5)));
 
         // when
         SupplierOrderResult placed = provider.placeOrder(request);
@@ -272,13 +272,13 @@ class AcmeSupplierProviderTest {
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         String ref = UUID.randomUUID().toString();
         SupplierPurchaseRequest request = purchase(
-                ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)));
+                ref, List.of(new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 5)));
 
         // when
         provider.placeOrder(request);
         String differentRef = UUID.randomUUID().toString();
         SupplierPurchaseRequest differentRequest = purchase(
-                differentRef, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)));
+                differentRef, List.of(new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 5)));
         Optional<SupplierOrderResult> notFound = provider.findPlacedOrder(differentRequest);
 
         // then
@@ -291,12 +291,12 @@ class AcmeSupplierProviderTest {
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         String ref = UUID.randomUUID().toString();
         SupplierDropshipRequest dropshipRequest = dropship(ref,
-                List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)), CONSIGNEE);
+                List.of(new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 5)), CONSIGNEE);
 
         // when
         SupplierOrderResult placed = provider.placeDropshipOrder(dropshipRequest);
         Optional<SupplierOrderResult> found = provider.findPlacedOrder(purchase(
-                ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5))));
+                ref, List.of(new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 5))));
 
         // then
         assertTrue(found.isPresent());
@@ -309,7 +309,7 @@ class AcmeSupplierProviderTest {
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         String ref = UUID.randomUUID().toString();
         List<SupplierOrderLine> lines = List.of(
-                new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5));
+                new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 5));
         SupplierPurchaseRequest request = purchase(ref, lines);
         SupplierDropshipRequest dropshipRequest = dropship(ref, lines, CONSIGNEE);
 
@@ -330,11 +330,11 @@ class AcmeSupplierProviderTest {
 
         // when
         List<SupplierQuote> quotes = provider.checkAvailability(
-                List.of(new SupplierOrderLine("ACME-5900000000014", "5900000000014", "B650-TOMAHAWK-WIFI", 1)));
+                List.of(new SupplierOrderLine("ACME-4711377402859", "4711377402859", "MAGB850TOMAHAWKWIFI", 1)));
 
         // then
         assertEquals(20, quotes.getFirst().availableQuantity());
-        assertEquals(730.89, quotes.getFirst().netPrice(), 0.01);
+        assertEquals(699.54, quotes.getFirst().netPrice(), 0.01);
     }
 
     @Test
@@ -463,7 +463,7 @@ class AcmeSupplierProviderTest {
                 Map.of("orderingScenarioOverride", "REJECTED"));
         String ref = UUID.randomUUID().toString();
         SupplierPurchaseRequest request = purchase(ref,
-                List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 1)));
+                List.of(new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 1)));
 
         // when / then
         assertThrows(SupplierOrderRejectedException.class, () -> provider.placeOrder(request));
@@ -512,7 +512,7 @@ class AcmeSupplierProviderTest {
             AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
             String ref = UUID.randomUUID().toString();
             SupplierPurchaseRequest request = purchase(
-                    ref, List.of(new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 5)));
+                    ref, List.of(new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 5)));
             SupplierOrderResult placed = provider.placeOrder(request);
 
             // when: simulate a restart by clearing the in-memory state and reloading from disk
@@ -589,7 +589,7 @@ class AcmeSupplierProviderTest {
         // given
         AcmeSupplierProvider provider = new AcmeSupplierProvider(Map.of());
         List<SupplierOrderLine> lines = List.of(
-                new SupplierOrderLine("ACME-5900000000001", "5900000000001", "MFN-CLEAR-01", 1));
+                new SupplierOrderLine("ACME-730143318280", "730143318280", "100-100001973WOF", 1));
 
         // when / then
         assertThrows(SupplierOrderRejectedException.class,

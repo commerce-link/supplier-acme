@@ -22,8 +22,8 @@ class AcmeTrackingSimulationTest {
 
     private static SupplierOrderResult twoLineOrder(String ref) {
         return new SupplierOrderResult("ACME-DS-" + ref, 100.0, "PLN", List.of(
-                new SupplierQuote("5900000000001", "MFN-CLEAR-01", 5, 50.0, "PLN"),
-                new SupplierQuote("5900000000002", "MFN-VALUE-01", 5, 50.0, "PLN")));
+                new SupplierQuote("730143318280", "100-100001973WOF", 5, 50.0, "PLN"),
+                new SupplierQuote("4711636046213", "90YV0M17-M0NA00", 5, 50.0, "PLN")));
     }
 
     private static String key(String ref) {
@@ -83,13 +83,13 @@ class AcmeTrackingSimulationTest {
         assertEquals(1, stage1.parcels().size());
         assertEquals("ACMETRK" + AcmeTrackingSimulation.shortClientRef(ref) + "P1",
                 stage1.parcels().get(0).trackingNo());
-        assertEquals("5900000000001", stage1.parcels().get(0).lines().get(0).ean());
+        assertEquals("730143318280", stage1.parcels().get(0).lines().get(0).ean());
         assertEquals(SupplierOrderState.SHIPPED, stage2.state());
         assertEquals(2, stage2.parcels().size());
         assertEquals(stage1.parcels().get(0), stage2.parcels().get(0));
         assertEquals("ACMETRK" + AcmeTrackingSimulation.shortClientRef(ref) + "P2",
                 stage2.parcels().get(1).trackingNo());
-        assertEquals("5900000000002", stage2.parcels().get(1).lines().get(0).ean());
+        assertEquals("4711636046213", stage2.parcels().get(1).lines().get(0).ean());
     }
 
     @Test
@@ -99,7 +99,7 @@ class AcmeTrackingSimulationTest {
                 Map.of("trackingShipAfterChecks", "1", "trackingScenario", "parts"));
         String ref = UUID.randomUUID().toString();
         SupplierOrderResult oneLine = new SupplierOrderResult("ACME-DS-" + ref, 50.0, "PLN",
-                List.of(new SupplierQuote("5900000000001", "MFN-CLEAR-01", 5, 50.0, "PLN")));
+                List.of(new SupplierQuote("730143318280", "100-100001973WOF", 5, 50.0, "PLN")));
 
         // when
         SupplierOrderTracking tracking = simulation.track(key(ref), oneLine);

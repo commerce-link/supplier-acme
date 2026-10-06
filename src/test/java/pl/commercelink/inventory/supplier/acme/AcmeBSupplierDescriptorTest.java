@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AcmeBSupplierDescriptorTest {
 
     private static final List<SupplierOrderLine> SAMPLE_LINES =
-            List.of(new SupplierOrderLine("ACME-5900000000002", "5900000000002", "MFN-VALUE-01", 1));
+            List.of(new SupplierOrderLine("ACME-4711636046213", "4711636046213", "90YV0M17-M0NA00", 1));
 
     // Acme (unlike AcmeB) requires a shipping service; this is the default valid choice for tests
     // unrelated to that option.
@@ -50,11 +50,11 @@ class AcmeBSupplierDescriptorTest {
 
         // when
         List<SupplierQuote> quotes = provider.checkAvailability(
-                List.of(new SupplierOrderLine("ACME-5900000000006", "5900000000006", "MFN-MIRAGE-01", 1)));
+                List.of(new SupplierOrderLine("ACME-8806095811710", "8806095811710", "MZ-VAP2T0BW", 1)));
 
         // then
         assertEquals(35, quotes.getFirst().availableQuantity());
-        assertEquals(649.00, quotes.getFirst().netPrice());
+        assertEquals(1418.65, quotes.getFirst().netPrice());
     }
 
     @Test
