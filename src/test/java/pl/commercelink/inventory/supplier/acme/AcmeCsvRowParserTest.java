@@ -1,19 +1,21 @@
 package pl.commercelink.inventory.supplier.acme;
 
 import org.junit.jupiter.api.Test;
-import pl.commercelink.inventory.supplier.api.ParsedRow;
+import pl.commercelink.inventory.supplier.api.FeedItem;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AcmeCsvRowParserTest {
 
-    private final AcmeCsvRowParser parser = new AcmeCsvRowParser(AcmeSupplierDescriptor.SUPPLIER);
+    private final AcmeCsvRowParser parser = new AcmeCsvRowParser();
 
     @Test
-    void parsesRowIntoItemAndProduct() {
+    void parsesRowIntoFeedItem() {
         // given
         String[] row = {
                 "1234567890123", "MFN-1", "TestBrand", "Test Product",
@@ -21,26 +23,28 @@ class AcmeCsvRowParserTest {
         };
 
         // when
-        ParsedRow result = parser.parse(row);
+        FeedItem result = parser.parse(row);
 
         // then
-        assertEquals("1234567890123", result.item().ean());
-        assertEquals("MFN-1", result.item().mfn());
-        assertEquals(100.50, result.item().netPrice());
-        assertEquals("PLN", result.item().currency());
-        assertEquals(5, result.item().qty());
-        assertEquals("Acme", result.item().supplier());
-        assertEquals("TestBrand", result.product().brand());
-        assertEquals("Test Product", result.product().name());
-        assertEquals(5, result.product().dataAccuracyScore());
-        assertNull(result.product().netWeightInGrams());
-        assertNull(result.product().grossWeightInGrams());
-        assertEquals("CPU", result.product().rawCategory());
+        assertEquals("1234567890123", result.getEan());
+        assertEquals("MFN-1", result.getMfn());
+        assertEquals("TestBrand", result.getBrand());
+        assertEquals("Test Product", result.getName());
+        assertEquals("CPU", result.getCategory());
+        assertEquals(100.50, result.getNetPrice());
+        assertEquals("PLN", result.getCurrency());
+        assertEquals(5, result.getQty());
+        assertEquals(1, result.getLeadTimeDays());
+        assertTrue(result.isSellable());
+        assertFalse(result.isInStock());
+        assertFalse(result.isInDelivery());
+        assertNull(result.getNetWeightInGrams());
+        assertNull(result.getGrossWeightInGrams());
     }
 
     @Test
-    void passesFeedCategoryColumnThroughAsRawCategory() {
-        for (String feedCategory : List.of("CPU", "GPU", "Laptops", "Frobnicator")) {
+    void passesFeedCategoryColumnThrough() {
+        for (String feedCategory : List.of("CPU", "GPU", "Laptops", "Frobnicator", "Karty graficzne")) {
             // given
             String[] row = {
                     "1234567890123", "MFN-1", "TestBrand", "Test Product",
@@ -48,37 +52,28 @@ class AcmeCsvRowParserTest {
             };
 
             // when
-            ParsedRow result = parser.parse(row);
+            FeedItem result = parser.parse(row);
 
             // then
-            assertEquals(feedCategory, result.product().rawCategory());
+            assertEquals(feedCategory, result.getCategory());
         }
     }
 
     @Test
-    void parsePassesRawFeedCategory() {
-        // given
-        String[] row = {
-                "1234567890123", "MFN-1", "TestBrand", "Test Product",
-                "Karty graficzne", "100.50", "PLN", "5"
-        };
-
+    void derivesSkuFromUnifiedEan() {
         // when
-        ParsedRow result = parser.parse(row);
+        FeedItem result = parser.parse(new String[]{"1234567890123", "MFN-1", "Brand", "Name", "CPU", "100.50", "PLN", "5"});
 
         // then
-        assertEquals("Karty graficzne", result.product().rawCategory());
-    }
-
-    @Test
-    void derivesSkuFromUnifiedEan() {
-        ParsedRow result = parser.parse(new String[]{"1234567890123", "MFN-1", "Brand", "Name", "CPU", "100.50", "PLN", "5"});
-        assertEquals("ACME-1234567890123", result.item().sku());
+        assertEquals("ACME-1234567890123", result.getSku());
     }
 
     @Test
     void derivesSkuFromUnifiedEanForLeadingZeroEan() {
-        ParsedRow result = parser.parse(new String[]{"0123456789012", "MFN-1", "Brand", "Name", "CPU", "100.50", "PLN", "5"});
-        assertEquals("ACME-" + result.item().ean(), result.item().sku());
+        // when
+        FeedItem result = parser.parse(new String[]{"0123456789012", "MFN-1", "Brand", "Name", "CPU", "100.50", "PLN", "5"});
+
+        // then
+        assertEquals("ACME-123456789012", result.getSku());
     }
 }
